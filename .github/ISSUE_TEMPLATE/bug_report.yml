@@ -1,0 +1,153 @@
+name: "🐞 Reporte de Bug"
+description: "Reportar un fallo o comportamiento inesperado en el sistema"
+title: "[BUG] [Módulo]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 📋 Radar de Reputación en Crisis - Equipo 7
+        Por favor completa los siguientes campos para que el equipo pueda reproducir y solucionar el problema rápidamente.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente / Módulo afectado
+      description: Selecciona la parte del sistema donde ocurre el fallo.
+      options:
+        - "Backend / Scraper"
+        - "Frontend / Dashboard"
+        - "IA (Jev - Clasificación de reseñas)"
+        - "IA (Generativa - Cold Email)"
+        - "Base de Datos (PostgreSQL)"
+        - "API / Endpoints"
+        - "Otro"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severidad (Impacto técnico)
+      description: Qué tan grave es la falla en el funcionamiento.
+      options:
+        - "Crítica (Caída del sistema / bloqueo total sin alternativa)"
+        - "Alta (Funcionalidad principal rota)"
+        - "Media (Funcionalidad secundaria o con alternativa)"
+        - "Baja (Cosmético / visual / texto)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad (Urgencia de sprint)
+      options:
+        - "P1 - Inmediata (Atender de inmediato)"
+        - "P2 - Alta (Sprint actual)"
+        - "P3 - Media (Siguiente sprint)"
+        - "P4 - Baja (Backlog)"
+    validations:
+      required: true
+
+  - type: input
+    id: prevalence
+    attributes:
+      label: Frecuencia / Prevalencia del bug
+      description: "¿Con qué frecuencia ocurre el fallo?"
+      placeholder: "Siempre (100% reproducible) / Intermitente / Solo la primera vez..."
+    validations:
+      required: true
+
+  - type: input
+    id: target_url_endpoint
+    attributes:
+      label: URL, Endpoint o Comando afectado
+      description: Ruta web, endpoint de API o script donde ocurre el problema.
+      placeholder: "Ej: POST /api/v1/scrape o http://localhost:3000/dashboard"
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Entorno y Versión
+      description: Sistema operativo, navegador, rama o commit.
+      placeholder: "Ej: Windows 11, Chrome v124, rama: feature/scraper-maps"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Descripción del Problema
+      description: Explica claramente qué ocurre de manera anómala y su impacto.
+      placeholder: "Al ejecutar la búsqueda para CDMX, el scraper inserta comercios repetidos en la base de datos..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: preconditions
+    attributes:
+      label: 🔄 Precondiciones
+      description: ¿Qué datos, estado o configuración previa se requieren antes de reproducir?
+      placeholder: "1. Base de datos PostgreSQL levantada.\n2. La tabla businesses ya contiene registros de CDMX."
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: 👣 Pasos para Reproducir
+      description: Lista ordenada paso a paso para recrear el error.
+      placeholder: "1. Ir a...\n2. Ejecutar...\n3. Enviar parámetro..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_result
+    attributes:
+      label: 🎯 Comportamiento Esperado
+      description: ¿Qué debería suceder según la especificación funcional?
+      placeholder: "El sistema no debe insertar comercios repetidos ni generar IDs duplicados."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_result
+    attributes:
+      label: 💥 Comportamiento Actual
+      description: ¿Qué ocurre en realidad? (Comportamiento erróneo observado).
+      placeholder: "Se generan 20 registros duplicados con IDs distintos."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 💻 Logs y Mensajes de Error
+      description: Pega aquí trazas de error, respuestas HTTP o consultas SQL.
+      render: shell
+      placeholder: "error: duplicate key value violates unique constraint..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 📸 Evidencia / Adjuntos
+      description: Arrastra y suelta imágenes, o pega enlaces a Loom / Drive.
+      placeholder: "Arrastra capturas de pantalla aquí..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Confirmaciones previas
+      description: Por favor verifica antes de enviar el reporte.
+      options:
+        - label: "He comprobado que no existe ya un reporte similar abierto."
+          required: true
+        - label: "He incluido los pasos mínimos necesarios para reproducir el fallo."
+          required: true
