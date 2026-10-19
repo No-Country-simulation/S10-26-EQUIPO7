@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REPUSENSE - Dashboard de Ventas & Radar de Reputación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-shield-halved text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg text-white leading-tight">REPUSENSE - Dashboard de Ventas
+                    </h1>
+                    <p class="text-xs text-slate-400">Radar de reputación en crisis y prospección inteligente con IA</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Indicador de conexión DBA en vivo con titilar -->
+                <div id="dba-status-badge"
+                    class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 transition-colors duration-300">
+                    <span id="dba-ping-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute"></span>
+                    <span id="dba-solid-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 relative"></span>
+                    <span id="dba-status-text">DBA Conectado en Vivo</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Banner de Notificación Global -->
+    <div id="alert-banner" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
+        <div id="alert-box" class="p-4 rounded-xl flex items-center justify-between border text-sm">
+            <div class="flex items-center gap-3">
+                <i id="alert-icon" class="fa-solid fa-circle-exclamation text-lg"></i>
+                <span id="alert-text">Mensaje</span>
+            </div>
+            <button onclick="hideAlert()" class="text-slate-400 hover:text-white px-2 py-1 cursor-pointer">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <!-- Panel Superior: Estado DBA, Registros y Filtros de Consulta -->
+        <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-5 sm:p-6 shadow-xl space-y-5">
+
+            <!-- Estado de Conexión y Registros Disponibles -->
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-700/60">
+                <div class="flex items-center gap-3">
+                    <div id="dba-icon-box"
+                        class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center transition-colors duration-300">
+                        <i id="dba-icon" class="fa-solid fa-database text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-semibold text-white">Base de Datos Activa (DBA)</h2>
+                        <p id="records-legend" class="text-xs text-emerald-400 font-medium animate-pulse mt-0.5">
+                            <i class="fa-solid fa-circle-check text-[10px] mr-1"></i> Hay más de 1000 registros
+                            disponibles para su análisis
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="cargarMuestraDBA()"
+                        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-rotate text-blue-400"></i> Actualizar Conexión DBA
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sección de Filtros de Consulta -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-filter text-blue-400"></i> Parámetros de Consulta y Diagnóstico
+                    </h3>
+                    <span class="text-[11px] text-slate-400">* Campos obligatorios marcados</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                    <!-- Filtro 1: Ubicación (Obligatorio) -->
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-medium text-slate-300 flex items-center justify-between">
+                            <span>Ubicación <span class="text-rose-400">*</span></span>
+                            <span
+                                class="text-[10px] text-rose-400 bg-rose-500/10 px-1.5 py-0.2 rounded">Obligatorio</span>
+                        </label>
+                        <select id="filter-ubicacion"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="todos">Todas las ubicaciones</option>
+                            <option value="buenos aires">Buenos Aires, Argentina</option>
+                            <option value="cordoba">Córdoba, Argentina</option>
+                            <option value="rosario">Rosario, Argentina</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro 2: Scoring o Riesgo (Obligatorio) -->
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-medium text-slate-300 flex items-center justify-between">
+                            <span>Scoring / Riesgo <span class="text-rose-400">*</span></span>
+                            <span
+                                class="text-[10px] text-rose-400 bg-rose-500/10 px-1.5 py-0.2 rounded">Obligatorio</span>
+                        </label>
+                        <select id="filter-scoring"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="todos">Todos los niveles de riesgo</option>
+                            <option value="5">Nivel 5 (Crítico / Crisis)</option>
+                            <option value="4">Nivel 4 (Alto)</option>
+                            <option value="3">Nivel 3 (Moderado)</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro 3: Rubro (No obligatorio) -->
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-medium text-slate-300 flex items-center justify-between">
+                            <span>Rubro</span>
+                            <span class="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.2 rounded">Opcional</span>
+                        </label>
+                        <select id="filter-rubro"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="todos">Todos los rubros</option>
+                            <option value="gastronomia">Gastronomía / Cafetería</option>
+                            <option value="retail">Retail / Kioscos</option>
+                            <option value="salud">Salud / Estética</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro 4: Problema Principal (No obligatorio) -->
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-medium text-slate-300 flex items-center justify-between">
+                            <span>Problema Principal</span>
+                            <span class="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.2 rounded">Opcional</span>
+                        </label>
+                        <select id="filter-problema"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="todos">Cualquier problema</option>
+                            <option value="higiene">Higiene</option>
+                            <option value="atencion">Atención</option>
+                            <option value="demoras">Demoras</option>
+                            <option value="precios">Precios</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- Botones de Acción: Simulación de Error y Comenzar Diagnóstico -->
+                <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-end gap-3">
+                    
+                    <!-- Botón para simular fallo de conexión API / DB -->
+                    <button type="button" id="btn-toggle-error" onclick="toggleSimulacionError()"
+                        class="text-xs border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-medium px-4 py-3 rounded-xl transition cursor-pointer flex items-center justify-between sm:justify-start gap-2 shadow-sm">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-plug-circle-xmark text-rose-400" id="icon-sim-error"></i>
+                            <span>Simular Fallo de Conexión (API / DB)</span>
+                        </span>
+                        <span id="badge-sim-status"
+                            class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full font-mono font-bold">DESACTIVADO</span>
+                    </button>
+
+                    <!-- Botón Comenzar Diagnóstico -->
+                    <button type="button" id="btn-comenzar-diag" onclick="ejecutarDiagnostico()"
+                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold px-8 py-3 rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2.5 transition cursor-pointer text-xs sm:text-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles" id="icon-diag-btn"></i>
+                        <span id="text-diag-btn">Comenzar Diagnóstico</span>
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Vista de Loading con Doble Spinner (DBA + IA) -->
+        <div id="loading-diagnostico-view"
+            class="hidden bg-slate-800/80 border border-slate-700/80 rounded-2xl p-8 sm:p-12 shadow-xl text-center space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
+                <!-- Spinner 1: DB -->
+                <div class="flex flex-col items-center space-y-2">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-2xl shadow-lg shadow-blue-500/10">
+                        <i class="fa-solid fa-database animate-pulse"></i>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs font-bold text-white">1. Base de Datos (DBA)</p>
+                        <p class="text-[11px] text-amber-400 font-medium flex items-center justify-center gap-1.5 mt-0.5">
+                            <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> Consultando PostgreSQL...
+                        </p>
+                    </div>
+                </div>
+
+                <div class="hidden sm:block text-slate-600 text-xl">
+                    <i class="fa-solid fa-arrow-right animate-pulse"></i>
+                </div>
+
+                <!-- Spinner 2: IA -->
+                <div class="flex flex-col items-center space-y-2">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/10">
+                        <i class="fa-solid fa-brain animate-pulse"></i>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs font-bold text-white">2. Motor de IA (API)</p>
+                        <p class="text-[11px] text-indigo-400 font-medium flex items-center justify-center gap-1.5 mt-0.5">
+                            <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> Evaluando reseñas con IA...
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 max-w-md mx-auto">
+                Sincronizando registros con la base de datos y aplicando modelo de IA para clasificar causas de reputación...
+            </p>
+        </div>
+
+        <!-- Layout Principal: Tabla de Leads + Panel Lateral de IA -->
+        <div id="main-content-layout" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Tabla de Resultados -->
+            <div id="table-container-wrapper"
+                class="lg:col-span-12 transition-all duration-300 bg-slate-800/70 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden p-6 space-y-5">
+
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700/60 pb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-rose-500"></i> Comercios Identificados para
+                            Prospección
+                            <span id="badge-total"
+                                class="text-xs bg-slate-700 text-slate-300 px-2.5 py-0.5 rounded-full font-normal">0</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Seleccione los comercios mediante el tilde para activar
+                            el panel de envío automatizado con IA</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="seleccionarTodos()"
+                            class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5">
+                            <i class="fa-regular fa-square-check"></i>
+                            <span>Seleccionar Todos</span>
+                        </button>
+
+                        <!-- Botón Dropdown de Exportación a CSV -->
+                        <div class="relative inline-block text-left" id="export-dropdown-wrapper">
+                            <button onclick="toggleExportMenu(event)" id="btn-export-main"
+                                class="text-xs bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-2 shadow-sm shadow-emerald-500/20">
+                                <i class="fa-solid fa-file-arrow-down"></i>
+                                <span id="btn-export-label">Exportar a CSV</span>
+                                <i class="fa-solid fa-chevron-down text-[9px] opacity-75"></i>
+                            </button>
+
+                            <!-- Menú Desplegable con opciones de exportar Todos o Seleccionados -->
+                            <div id="export-dropdown-menu"
+                                class="hidden absolute right-0 mt-1.5 w-60 rounded-xl bg-slate-800 border border-slate-700 shadow-2xl z-30 py-1.5 text-xs">
+                                <button onclick="exportarContactosCSV('filtrados')"
+                                    class="w-full text-left px-3.5 py-2.5 hover:bg-slate-700/60 text-slate-200 flex items-center justify-between transition cursor-pointer">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-filter text-blue-400"></i>
+                                        <span>Exportar todos los filtrados</span>
+                                    </span>
+                                    <span id="export-count-filtrados"
+                                        class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-mono">0</span>
+                                </button>
+                                <button onclick="exportarContactosCSV('seleccionados')" id="btn-opt-export-sel"
+                                    class="w-full text-left px-3.5 py-2.5 hover:bg-slate-700/60 text-slate-200 flex items-center justify-between transition cursor-pointer">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-check-double text-emerald-400"></i>
+                                        <span>Exportar solo seleccionados</span>
+                                    </span>
+                                    <span id="export-count-seleccionados"
+                                        class="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">0</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Tabla -->
+                <div class="overflow-x-auto rounded-xl border border-slate-700/60">
+                    <table class="w-full text-left text-sm" id="table-results">
+                        <thead
+                            class="bg-slate-900/90 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-700/60">
+                            <tr>
+                                <th class="px-4 py-3 text-center w-12">
+                                    <input type="checkbox" id="chk-all" onchange="toggleSelectAll(this)"
+                                        class="w-4 h-4 text-blue-600 rounded bg-slate-900 border-slate-700 accent-blue-600 cursor-pointer">
+                                </th>
+                                <th class="px-3 py-3">Status Contacto</th>
+                                <th class="px-4 py-3">Comercio & Contacto</th>
+                                <th class="px-3 py-3">Ubicación</th>
+                                <th class="px-3 py-3 text-center">Scoring / Riesgo</th>
+                                <th class="px-3 py-3 text-center">Problema Raíz</th>
+                                <th class="px-4 py-3">Diagnóstico & Reseñas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-800 bg-slate-900/40 text-slate-300">
+                            <!-- Se rellena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <!-- Panel Lateral de Envío de Correos con IA (Aparece al seleccionar registros) -->
+            <div id="ai-email-panel"
+                class="hidden lg:col-span-5 bg-slate-800/90 border border-blue-500/50 rounded-2xl shadow-2xl p-5 space-y-4 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-blue-400"></i> Panel de Envío con IA (<span
+                                id="selected-count">0</span> seleccionados)
+                        </h3>
+                        <button onclick="cerrarPanelLateral()"
+                            class="text-slate-400 hover:text-white text-xs px-2 py-1 cursor-pointer">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Vista previa y acordeón para validar correos específicos -->
+                    <div id="ai-preview-list" class="space-y-3 mt-4 max-h-[450px] overflow-y-auto pr-1">
+                        <!-- Se llena dinámicamente con cada contacto seleccionado -->
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-700 flex items-center justify-between gap-3">
+                    <button onclick="cerrarPanelLateral()"
+                        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2.5 rounded-xl transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button onclick="enviarCorreosConIA()"
+                        class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition cursor-pointer">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>Indicar a la IA que envíe correos</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Script de Interactividad Frontend -->
+    <script>
+        // Estado de simulación de error de conexión
+        var simularErrorActivo = false;
+        var ultimosFiltrados = [];
+
+        // Datos simulados de ejemplo conectados al Radar REPUSENSE
+        var comerciosData = [
+            {
+                id: 1,
+                negocio: "Café & Bar La Estación",
+                email: "contacto@laestacionbar.com",
+                ubicacion: "Buenos Aires, Argentina",
+                rubro: "Gastronomía / Cafetería",
+                riesgo: 5,
+                problema: "higiene",
+                resumen: "Grave riesgo sanitario con múltiples reportes de falta de limpieza y bichos en el salón.",
+                status: "No contactado",
+                seleccionado: false
+            },
+            {
+                id: 2,
+                negocio: "Kiosco 24hs Avellaneda",
+                email: "ventas@kioscoavellaneda24.com",
+                ubicacion: "Buenos Aires, Argentina",
+                rubro: "Retail / Kioscos",
+                riesgo: 4,
+                problema: "atencion",
+                resumen: "Trato displicente y demoras excesivas en caja reportadas por los clientes.",
+                status: "No contactado",
+                seleccionado: false
+            },
+            {
+                id: 3,
+                negocio: "Centro Estética Belleza Integral",
+                email: "info@bellezaintegral.com.ar",
+                ubicacion: "Córdoba, Argentina",
+                rubro: "Salud / Estética",
+                riesgo: 5,
+                problema: "higiene",
+                resumen: "Quejas graves sobre esterilización de material y bioseguridad en tratamientos.",
+                status: "No contactado",
+                seleccionado: false
+            },
+            {
+                id: 4,
+                negocio: "Pizzería Don Pepe",
+                email: "donpepe@pizzeria.com",
+                ubicacion: "Rosario, Argentina",
+                rubro: "Gastronomía / Cafetería",
+                riesgo: 3,
+                problema: "demoras",
+                resumen: "Demoras de más de 45 minutos en entregas de pedidos a domicilio y salón.",
+                status: "No contactado",
+                seleccionado: false
+            }
+        ];
+
+        function showAlert(text, type) {
+            var banner = document.getElementById('alert-banner');
+            var box = document.getElementById('alert-box');
+            var icon = document.getElementById('alert-icon');
+            var msg = document.getElementById('alert-text');
+
+            banner.classList.remove('hidden');
+            msg.innerText = text;
+
+            if (type === 'success') {
+                box.className = "p-4 rounded-xl flex items-center justify-between border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 text-sm";
+                icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            } else if (type === 'error') {
+                box.className = "p-4 rounded-xl flex items-center justify-between border bg-rose-500/10 border-rose-500/30 text-rose-300 text-sm";
+                icon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-lg";
+            } else {
+                box.className = "p-4 rounded-xl flex items-center justify-between border bg-blue-500/10 border-blue-500/30 text-blue-300 text-sm";
+                icon.className = "fa-solid fa-circle-info text-blue-400 text-lg";
+            }
+            setTimeout(hideAlert, 6000);
+        }
+
+        function hideAlert() {
+            document.getElementById('alert-banner').classList.add('hidden');
+        }
+
+        // Toggle del modo de simulación de error
+        function toggleSimulacionError() {
+            simularErrorActivo = !simularErrorActivo;
+            var badge = document.getElementById('badge-sim-status');
+            var btn = document.getElementById('btn-toggle-error');
+
+            if (simularErrorActivo) {
+                badge.innerText = "ACTIVADO";
+                badge.className = "text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full font-mono font-bold animate-pulse";
+                btn.className = "text-xs border border-rose-500 bg-rose-500/20 text-rose-200 font-medium px-4 py-3 rounded-xl transition cursor-pointer flex items-center justify-between sm:justify-start gap-2 shadow-sm shadow-rose-500/20";
+                showAlert("Modo simulación de fallo ACTIVADO. Al presionar 'Comenzar Diagnóstico' se mostrarán los spinners de carga y luego el error de conexión.", "info");
+            } else {
+                badge.innerText = "DESACTIVADO";
+                badge.className = "text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full font-mono font-bold";
+                btn.className = "text-xs border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-medium px-4 py-3 rounded-xl transition cursor-pointer flex items-center justify-between sm:justify-start gap-2 shadow-sm";
+                showAlert("Modo simulación de fallo desactivado. El diagnóstico funcionará normalmente.", "info");
+                restaurarEstadoDBANormal();
+            }
+        }
+
+        function restaurarEstadoDBANormal() {
+            var badge = document.getElementById('dba-status-badge');
+            var ping = document.getElementById('dba-ping-dot');
+            var solid = document.getElementById('dba-solid-dot');
+            var text = document.getElementById('dba-status-text');
+            var legend = document.getElementById('records-legend');
+            var iconBox = document.getElementById('dba-icon-box');
+
+            badge.className = "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 transition-colors duration-300";
+            ping.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute";
+            solid.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 relative";
+            text.innerText = "DBA Conectado en Vivo";
+
+            iconBox.className = "w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center transition-colors duration-300";
+            legend.className = "text-xs text-emerald-400 font-medium animate-pulse mt-0.5";
+            legend.innerHTML = '<i class="fa-solid fa-circle-check text-[10px] mr-1"></i> Hay más de 1000 registros disponibles para su análisis';
+        }
+
+        function ponerEstadoDBACargando() {
+            var badge = document.getElementById('dba-status-badge');
+            var ping = document.getElementById('dba-ping-dot');
+            var solid = document.getElementById('dba-solid-dot');
+            var text = document.getElementById('dba-status-text');
+            var legend = document.getElementById('records-legend');
+            var iconBox = document.getElementById('dba-icon-box');
+
+            badge.className = "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/10 border border-amber-500/20 text-amber-400 transition-colors duration-300";
+            ping.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping absolute";
+            solid.className = "w-2.5 h-2.5 rounded-full bg-amber-400 relative";
+            text.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> Consultando DBA...';
+
+            iconBox.className = "w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center transition-colors duration-300";
+            legend.className = "text-xs text-amber-400 font-medium mt-0.5";
+            legend.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[10px] mr-1"></i> [DBA] Consultando registros de clientes en PostgreSQL...';
+        }
+
+        function ponerEstadoDBAError() {
+            var badge = document.getElementById('dba-status-badge');
+            var ping = document.getElementById('dba-ping-dot');
+            var solid = document.getElementById('dba-solid-dot');
+            var text = document.getElementById('dba-status-text');
+            var legend = document.getElementById('records-legend');
+            var iconBox = document.getElementById('dba-icon-box');
+
+            badge.className = "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-rose-500/10 border border-rose-500/20 text-rose-400 transition-colors duration-300";
+            ping.className = "hidden";
+            solid.className = "w-2.5 h-2.5 rounded-full bg-rose-500 relative";
+            text.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-[10px]"></i> DBA Desconectado';
+
+            iconBox.className = "w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center transition-colors duration-300";
+            legend.className = "text-xs text-rose-400 font-medium mt-0.5";
+            legend.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-[10px] mr-1"></i> [Fallo DBA] Error de conexión: Connection refused / Timeout al conectar con la base de datos';
+        }
+
+        function cargarMuestraDBA() {
+            restaurarEstadoDBANormal();
+            showAlert("Conexión DBA actualizada. Más de 1000 registros sincronizados en vivo.", "success");
+            ejecutarDiagnostico();
+        }
+
+        function ejecutarDiagnostico() {
+            hideAlert();
+
+            // Bloquear botón y mostrar spinners
+            var btnDiag = document.getElementById('btn-comenzar-diag');
+            var iconDiag = document.getElementById('icon-diag-btn');
+            var textDiag = document.getElementById('text-diag-btn');
+            var loadingView = document.getElementById('loading-diagnostico-view');
+            var mainLayout = document.getElementById('main-content-layout');
+
+            btnDiag.disabled = true;
+            iconDiag.className = "fa-solid fa-circle-notch fa-spin";
+            textDiag.innerText = "Ejecutando diagnóstico...";
+
+            // Activar estado de carga en el indicador de la DB
+            ponerEstadoDBACargando();
+
+            // Mostrar vista de loading con ambos spinners (DBA + IA)
+            loadingView.classList.remove('hidden');
+            mainLayout.classList.add('hidden');
+
+            // Simulación de tiempo de carga
+            var tiempoEspera = simularErrorActivo ? 2500 : 800;
+
+            setTimeout(function () {
+                loadingView.classList.add('hidden');
+                mainLayout.classList.remove('hidden');
+                btnDiag.disabled = false;
+                iconDiag.className = "fa-solid fa-wand-magic-sparkles";
+                textDiag.innerText = "Comenzar Diagnóstico";
+
+                if (simularErrorActivo) {
+                    // Estado de ERROR
+                    ponerEstadoDBAError();
+                    renderErrorConexion();
+                    showAlert("❌ Error 503 / Timeout: Fallo de conexión con la API de IA y la Base de Datos. No se pudo completar el diagnóstico.", "error");
+                } else {
+                    // Estado NORMAL
+                    restaurarEstadoDBANormal();
+                    procesarFiltrosNormales();
+                }
+            }, tiempoEspera);
+        }
+
+        function renderErrorConexion() {
+            document.getElementById('badge-total').innerText = "0";
+            var tbody = document.getElementById('table-body');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-12 px-4 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-2xl shadow-lg shadow-rose-500/10 mb-3">
+                            <i class="fa-solid fa-plug-circle-xmark"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white">Fallo de Comunicación con la API y la Base de Datos</h3>
+                        <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                            No se pudo establecer conexión con el endpoint de la API ni sincronizar con la base de datos PostgreSQL (Timeout 503 / Connection Refused).
+                        </p>
+                        <div class="pt-4 flex items-center justify-center gap-3">
+                            <button onclick="reintentarConexionExitosa()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg transition cursor-pointer flex items-center gap-1.5">
+                                <i class="fa-solid fa-rotate-right"></i> Reintentar Conexión Normal
+                            </button>
+                            <button onclick="ejecutarDiagnostico()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium px-4 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-1.5">
+                                <i class="fa-solid fa-arrows-rotate"></i> Reintentar con Fallo
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            actualizarContadoresExportacion([]);
+        }
+
+        function reintentarConexionExitosa() {
+            if (simularErrorActivo) {
+                toggleSimulacionError();
+            }
+            ejecutarDiagnostico();
+        }
+
+        function procesarFiltrosNormales() {
+            var ubicacionFiltro = document.getElementById('filter-ubicacion').value;
+            var scoringFiltro = document.getElementById('filter-scoring').value;
+            var rubroFiltro = document.getElementById('filter-rubro').value;
+            var problemaFiltro = document.getElementById('filter-problema').value;
+
+            ultimosFiltrados = comerciosData.filter(function (item) {
+                if (item.status === "Contactado") return false;
+
+                if (ubicacionFiltro !== 'todos' && !item.ubicacion.toLowerCase().includes(ubicacionFiltro)) return false;
+                if (scoringFiltro !== 'todos' && item.riesgo !== parseInt(scoringFiltro)) return false;
+                if (rubroFiltro !== 'todos') {
+                    if (rubroFiltro === 'gastronomia' && !item.rubro.includes('Gastronomía')) return false;
+                    if (rubroFiltro === 'retail' && !item.rubro.includes('Retail')) return false;
+                    if (rubroFiltro === 'salud' && !item.rubro.includes('Salud')) return false;
+                }
+                if (problemaFiltro !== 'todos' && item.problema !== problemaFiltro) return false;
+                return true;
+            });
+
+            renderTabla(ultimosFiltrados);
+            actualizarContadoresExportacion(ultimosFiltrados);
+            showAlert(`Diagnóstico completado. Se cargaron ${ultimosFiltrados.length} registros que cumplen con los criterios.`, "success");
+        }
+
+        function renderTabla(items) {
+            document.getElementById('badge-total').innerText = items.length;
+            var tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            // Sincronizar checkbox "seleccionar todos" de cabecera
+            var chkAll = document.getElementById('chk-all');
+            if (chkAll) {
+                chkAll.checked = items.length > 0 && items.every(function (x) { return x.seleccionado; });
+            }
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-500 text-xs">No hay registros pendientes con los filtros seleccionados o ya fueron contactados.</td></tr>';
+                return;
+            }
+
+            items.forEach(function (item) {
+                var tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition";
+
+                var badgeStatus = item.status === "Contactado" ?
+                    '<span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Contactado</span>' :
+                    '<span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">No contactado</span>';
+
+                var badgeRiesgo = item.riesgo >= 5 ?
+                    '<span class="px-2 py-0.5 rounded text-[11px] bg-rose-600 text-white font-semibold">Crítico (5)</span>' :
+                    '<span class="px-2 py-0.5 rounded text-[11px] bg-amber-500 text-slate-900 font-semibold">Alto (4)</span>';
+
+                tr.innerHTML = `
+          <td class="px-4 py-3.5 text-center">
+            <input type="checkbox" ${item.seleccionado ? 'checked' : ''} onchange="toggleSeleccion(${item.id})" class="w-4 h-4 text-blue-600 rounded bg-slate-900 border-slate-700 accent-blue-600 cursor-pointer">
+          </td>
+          <td class="px-3 py-3.5 whitespace-nowrap">${badgeStatus}</td>
+          <td class="px-4 py-3.5">
+            <div class="font-semibold text-white">${item.negocio}</div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[11px] text-slate-400"><i class="fa-solid fa-envelope text-[9px] mr-1"></i>${item.email}</span>
+              <button onclick="copiarCorreo('${item.email}')" title="Copiar correo" class="text-blue-400 hover:text-blue-300 text-xs cursor-pointer px-1 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 transition">
+                <i class="fa-regular fa-copy text-[10px]"></i>
+              </button>
+            </div>
+          </td>
+          <td class="px-3 py-3.5 text-xs text-slate-300">
+            <span class="inline-flex items-center gap-1 bg-slate-800 px-2 py-1 rounded text-slate-300">
+              <i class="fa-solid fa-location-dot text-rose-400 text-[10px]"></i> ${item.ubicacion}
+            </span>
+          </td>
+          <td class="px-3 py-3.5 text-center whitespace-nowrap">${badgeRiesgo}</td>
+          <td class="px-3 py-3.5 text-center capitalize">
+            <span class="text-xs bg-slate-800 text-slate-200 px-2.5 py-1 rounded border border-slate-700">${item.problema}</span>
+          </td>
+          <td class="px-4 py-3.5 text-xs text-slate-300">
+            <p class="italic text-slate-200">${item.resumen}</p>
+          </td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function copiarCorreo(email) {
+            navigator.clipboard.writeText(email);
+            showAlert(`Correo copiado al portapapeles: ${email}`, "success");
+        }
+
+        function toggleSeleccion(id) {
+            var item = comerciosData.find(function (x) { return x.id === id; });
+            if (item) {
+                item.seleccionado = !item.seleccionado;
+            }
+            actualizarPanelLateral();
+            actualizarContadoresExportacion(ultimosFiltrados);
+
+            // Sincronizar checkbox de cabecera
+            var chkAll = document.getElementById('chk-all');
+            if (chkAll && ultimosFiltrados.length > 0) {
+                chkAll.checked = ultimosFiltrados.every(function (x) { return x.seleccionado; });
+            }
+        }
+
+        function toggleSelectAll(masterCheckbox) {
+            var checked = masterCheckbox.checked;
+            ultimosFiltrados.forEach(function (x) {
+                x.seleccionado = checked;
+            });
+            renderTabla(ultimosFiltrados);
+            actualizarPanelLateral();
+            actualizarContadoresExportacion(ultimosFiltrados);
+        }
+
+        function seleccionarTodos() {
+            var uncheckAll = ultimosFiltrados.length > 0 && ultimosFiltrados.every(function (x) { return x.seleccionado; });
+            ultimosFiltrados.forEach(function (x) {
+                x.seleccionado = !uncheckAll;
+            });
+            renderTabla(ultimosFiltrados);
+            actualizarPanelLateral();
+            actualizarContadoresExportacion(ultimosFiltrados);
+        }
+
+        function actualizarPanelLateral() {
+            var seleccionados = comerciosData.filter(function (x) { return x.seleccionado; });
+            var panel = document.getElementById('ai-email-panel');
+            var wrapper = document.getElementById('table-container-wrapper');
+            var countLabel = document.getElementById('selected-count');
+            var listContainer = document.getElementById('ai-preview-list');
+
+            countLabel.innerText = seleccionados.length;
+
+            if (seleccionados.length > 0) {
+                panel.classList.remove('hidden');
+                wrapper.className = "lg:col-span-7 transition-all duration-300 bg-slate-800/70 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden p-6 space-y-5";
+
+                listContainer.innerHTML = '';
+                seleccionados.forEach(function (item) {
+                    var div = document.createElement('div');
+                    div.className = "bg-slate-900/80 border border-slate-700/80 p-3 rounded-xl space-y-2";
+                    div.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white"><i class="fa-solid fa-store text-blue-400 mr-1"></i> ${item.negocio}</span>
+              <span class="text-[10px] text-emerald-400 font-mono">${item.email}</span>
+            </div>
+            <p class="text-[11px] text-slate-300 italic bg-slate-800/50 p-2 rounded border border-slate-700/50" id="preview-text-${item.id}">
+              "Estimado equipo de ${item.negocio}, hemos detectado áreas de mejora en ${item.problema} según recientes reseñas..."
+            </p>
+            <div class="flex items-center justify-between pt-1">
+              <button onclick="toggleExpandirMail(${item.id})" class="text-[11px] text-blue-400 hover:underline flex items-center gap-1 cursor-pointer">
+                <i class="fa-solid fa-chevron-down text-[9px]" id="icon-exp-${item.id}"></i> Ver correo específico redactado por IA
+              </button>
+            </div>
+            <div id="expanded-mail-${item.id}" class="hidden pt-2 border-t border-slate-800 text-[11px] text-slate-300 space-y-1">
+              <p class="font-semibold text-slate-200">Asunto: Optimización de reputación y atención en ${item.negocio}</p>
+              <p class="text-slate-400">Hola, analizamos el patrón de sus últimas reseñas con foco en ${item.problema} (Riesgo ${item.riesgo}/5). REPUSENSE puede ayudarles a automatizar respuestas y recuperar clientes insatisfechos...</p>
+            </div>
+          `;
+                    listContainer.appendChild(div);
+                });
+            } else {
+                panel.classList.add('hidden');
+                wrapper.className = "lg:col-span-12 transition-all duration-300 bg-slate-800/70 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden p-6 space-y-5";
+            }
+        }
+
+        function toggleExpandirMail(id) {
+            var expDiv = document.getElementById(`expanded-mail-${id}`);
+            var icon = document.getElementById(`icon-exp-${id}`);
+            if (expDiv.classList.contains('hidden')) {
+                expDiv.classList.remove('hidden');
+                icon.className = "fa-solid fa-chevron-up text-[9px]";
+            } else {
+                expDiv.classList.add('hidden');
+                icon.className = "fa-solid fa-chevron-down text-[9px]";
+            }
+        }
+
+        function cerrarPanelLateral() {
+            comerciosData.forEach(function (x) { x.seleccionado = false; });
+            renderTabla(ultimosFiltrados);
+            actualizarPanelLateral();
+            actualizarContadoresExportacion(ultimosFiltrados);
+        }
+
+        function enviarCorreosConIA() {
+            comerciosData.forEach(function (x) {
+                if (x.seleccionado) {
+                    x.status = "Contactado";
+                    x.seleccionado = false;
+                }
+            });
+            showAlert("¡Correos enviados exitosamente por la IA! Los registros contactados se actualizaron y no aparecerán en próximos análisis.", "success");
+            procesarFiltrosNormales();
+            actualizarPanelLateral();
+        }
+
+        // ==========================================
+        // FUNCIONALIDADES DE EXPORTACIÓN A CSV
+        // ==========================================
+        function toggleExportMenu(e) {
+            if (e) e.stopPropagation();
+            var menu = document.getElementById('export-dropdown-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Cerrar dropdown al hacer clic fuera
+        document.addEventListener('click', function (e) {
+            var wrapper = document.getElementById('export-dropdown-wrapper');
+            var menu = document.getElementById('export-dropdown-menu');
+            if (wrapper && !wrapper.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        function actualizarContadoresExportacion(items) {
+            var filtradosCount = items ? items.length : 0;
+            var seleccionadosCount = items ? items.filter(function (x) { return x.seleccionado; }).length : 0;
+
+            var spanFiltrados = document.getElementById('export-count-filtrados');
+            var spanSeleccionados = document.getElementById('export-count-seleccionados');
+            var btnLabel = document.getElementById('btn-export-label');
+
+            if (spanFiltrados) spanFiltrados.innerText = filtradosCount;
+            if (spanSeleccionados) spanSeleccionados.innerText = seleccionadosCount;
+
+            // Actualizar etiqueta del botón según selección
+            if (btnLabel) {
+                if (seleccionadosCount > 0) {
+                    btnLabel.innerText = `Exportar CSV (${seleccionadosCount} selecc.)`;
+                } else {
+                    btnLabel.innerText = "Exportar a CSV";
+                }
+            }
+        }
+
+        function exportarContactosCSV(modo) {
+            // Ocultar dropdown
+            var menu = document.getElementById('export-dropdown-menu');
+            if (menu) menu.classList.add('hidden');
+
+            var lista = [];
+
+            if (modo === 'seleccionados') {
+                lista = ultimosFiltrados.filter(function (x) { return x.seleccionado; });
+                if (lista.length === 0) {
+                    showAlert("No has seleccionado ningún comercio con la casilla. Selecciona al menos uno o elige 'Exportar todos los filtrados'.", "error");
+                    return;
+                }
+            } else if (modo === 'filtrados') {
+                lista = ultimosFiltrados;
+                if (lista.length === 0) {
+                    showAlert("No hay comercios en la búsqueda filtrada actual para exportar.", "error");
+                    return;
+                }
+            } else {
+                // Modo automático: si hay seleccionados, exporta seleccionados; de lo contrario, exporta todos los filtrados
+                var seleccionados = ultimosFiltrados.filter(function (x) { return x.seleccionado; });
+                lista = seleccionados.length > 0 ? seleccionados : ultimosFiltrados;
+                if (lista.length === 0) {
+                    showAlert("No hay comercios disponibles para exportar.", "error");
+                    return;
+                }
+            }
+
+            var headers = [
+                "ID",
+                "Comercio",
+                "Email",
+                "Ubicacion",
+                "Rubro",
+                "Scoring_Riesgo",
+                "Problema_Principal",
+                "Status_Contacto",
+                "Diagnostico_Resumen"
+            ];
+
+            var rows = lista.map(function (c) {
+                return [
+                    c.id,
+                    `"${String(c.negocio || '').replace(/"/g, '""')}"`,
+                    `"${String(c.email || '').replace(/"/g, '""')}"`,
+                    `"${String(c.ubicacion || '').replace(/"/g, '""')}"`,
+                    `"${String(c.rubro || '').replace(/"/g, '""')}"`,
+                    c.riesgo,
+                    `"${String(c.problema || '').replace(/"/g, '""')}"`,
+                    `"${String(c.status || '').replace(/"/g, '""')}"`,
+                    `"${String(c.resumen || '').replace(/"/g, '""')}"`
+                ].join(",");
+            });
+
+            // Agregar BOM UTF-8 (\uFEFF) para visualización correcta de acentos en Excel
+            var csvContent = "\uFEFF" + [headers.join(",")].concat(rows).join("\r\n");
+            var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            var link = document.createElement("a");
+            var fecha = new Date().toISOString().slice(0, 10);
+            var nombreArchivo = `contactos_repusense_${modo || 'leads'}_${fecha}.csv`;
+
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", nombreArchivo);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showAlert(`¡Archivo ${nombreArchivo} descargado! (${lista.length} contactos exportados)`, "success");
+        }
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function () {
+            ejecutarDiagnostico();
+        });
+    </script>
+</body>
+
+</html>
