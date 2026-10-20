@@ -1,5 +1,5 @@
 package com.repusense.backend.controller;
-
+import org.springframework.web.bind.annotation.PostMapping;
 import com.repusense.backend.model.Lead;
 import com.repusense.backend.repository.LeadRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.Map;
 
 @RestController
@@ -19,6 +20,13 @@ public class LeadController {
 
     @Autowired
     private LeadRepository leadRepository;
+
+    // Endpoint para guardar/crear un nuevo Lead desde el scraper/IA
+    @PostMapping
+    public ResponseEntity<Lead> createLead(@RequestBody Lead lead) {
+        Lead savedLead = leadRepository.save(lead);
+        return ResponseEntity.ok(savedLead);
+    }
 
     // Endpoint paginado con filtros opcionales por ciudad y estado
     @GetMapping

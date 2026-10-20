@@ -23,3 +23,16 @@
 hs_err_pid*
 replay_pid*
 target/ 
+# Entornos y secretos
+.env
+ai/.env
+backend/.env
+
+# Compilación y cachés
+target/
+**/target/
+__pycache__/
+**/__pycache__/
+*.pyc
+.vscode/
+.idea/
