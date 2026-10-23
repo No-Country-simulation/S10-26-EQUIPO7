@@ -1,18 +1,20 @@
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copiamos todo el repositorio a la imagen
 COPY . .
-
-# Nos movemos a la carpeta backend donde está el pom.xml y compilamos
 WORKDIR /app/backend
 RUN mvn clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Copiamos el jar compilado desde la etapa de build
 COPY --from=build /app/backend/target/*.jar app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Forzamos la lectura de las variables de entorno de Render al iniciar Java
+ENTRYPOINT ["java", \
+  "-Dspring.datasource.url=${SPRING_DATASOURCE_URL}", \
+  "-Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME}", \
+  "-Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}", \
+  "-jar", "app.jar"]
