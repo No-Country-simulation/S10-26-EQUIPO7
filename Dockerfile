@@ -12,9 +12,9 @@ COPY --from=build /app/backend/target/*.jar app.jar
 
 EXPOSE 8080
 
-# Pasamos la configuración completa directo como propiedades de sistema de Java (-D)
+# Forzamos la URL correcta directo en la ejecución de Java
 ENTRYPOINT ["java", \
-  "-Dspring.datasource.url=jdbc:postgresql://dpg-dbdj4tmi0phs73a02m4g-a.oregon-postgres.render.com:5432/repusense_db", \
+  "-Dspring.datasource.url=jdbc:postgresql://dpg-dbdj4tmi0phs73a02m4g-a.oregon-postgres.render.com:5432/repusense_db_ugin", \
   "-Dspring.datasource.username=repusense_db_ugin_user", \
   "-Dspring.datasource.password=ThrDNy3q9LHGRKuNdB6wuIeEoj297tvn", \
   "-Dspring.datasource.driver-class-name=org.postgresql.Driver", \
