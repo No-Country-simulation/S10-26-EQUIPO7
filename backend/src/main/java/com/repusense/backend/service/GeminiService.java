@@ -1,3 +1,4 @@
+
 package com.repusense.backend.service;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -12,10 +13,10 @@ import java.util.Map;
 @Service
 public class GeminiService {
 
-    @Value("${gemini.api.key}")
+    @Value("${gemini.api.key:${GEMINI_API_KEY:clave_demo_desarrollo}}")
     private String apiKey;
 
-    @Value("${gemini.api.url}")
+    @Value("${gemini.api.url:${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent}}")
     private String apiUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
