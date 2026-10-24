@@ -27,6 +27,8 @@ public class Business {
     @Column(nullable = false)
     private String name;
 
+    private String address; // Dirección obtenida de Google Maps
+
     @Column(nullable = false, length = 100)
     private String city;
 
