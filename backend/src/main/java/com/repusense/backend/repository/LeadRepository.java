@@ -1,3 +1,4 @@
+
 package com.repusense.backend.repository;
 
 import com.repusense.backend.model.Lead;
@@ -7,5 +8,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificationExecutor<Lead> {
-    // Hereda métodos de paginación, filtros dinámicos y CRUD estándar
+
+    boolean existsByBusiness_Id(Long businessId);
 }

@@ -1,5 +1,6 @@
 package com.repusense.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // <-- 1. Importar esto
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.OffsetDateTime;
@@ -18,6 +19,7 @@ public class Lead {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // <-- 2. Agregar esta línea
     private Business business;
 
     @Column(nullable = false, length = 50)

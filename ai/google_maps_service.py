@@ -1,62 +1,77 @@
+
 import os
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Usa la clave de API de Google / Places configurada en el .env
-GOOGLE_MAPS_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_PLACES_API_KEY")
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+
+PLACES_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+
 
 def search_businesses_in_maps(rubro="Pizzería", ciudad="La Plata"):
-    """
-    Realiza una búsqueda REAL en Google Maps/Places API.
-    Devuelve una lista de comercios reales con su nombre, rating, dirección y categoría.
-    """
-    query = f"{rubro} en {ciudad}"
-    url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-    
-    params = {
-        "query": query,
-        "key": GOOGLE_MAPS_API_KEY
-    }
-    
-    print(f"📡 Buscando en Google Maps: '{query}'...")
-    
-    try:
-        response = requests.get(url, params=params)
-        data = response.json()
-        
-        status = data.get("status")
-        if status != "OK":
-            print(f"⚠️ Google Maps API devolvió estado: {status}")
-            if "error_message" in data:
-                print(f"   Detalle: {data['error_message']}")
-            return []
-
-        results = data.get("results", [])
-        businesses = []
-
-        for place in results:
-            # Extraer ciudad y dirección limpia si está disponible
-            formatted_address = place.get("formatted_address", f"{ciudad}, Argentina")
-            
-            businesses.append({
-                "name": place.get("name"),
-                "category": rubro.capitalize(),
-                "city": ciudad,
-                "rating": place.get("rating", 3.5),
-                "address": formatted_address
-            })
-
-        print(f"✅ Se encontraron {len(businesses)} comercios reales en Google Maps.")
-        return businesses
-
-    except Exception as e:
-        print(f"❌ Error conectando con Google Maps API: {e}")
+    if not GOOGLE_PLACES_API_KEY:
+        print("ERROR: falta GOOGLE_PLACES_API_KEY en el archivo .env")
         return []
 
+    query = f"{rubro} en {ciudad}"
+    params = {
+        "query": query,
+        "key": GOOGLE_PLACES_API_KEY,
+        "language": "es",
+        "region": "ar"
+    }
+
+    print(f"Buscando comercios en Google Places: {query}")
+
+    try:
+        response = requests.get(
+            PLACES_URL,
+            params=params,
+            timeout=20
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        status = data.get("status")
+
+        if status != "OK":
+            print(f"Google Places devolvió: {status}")
+            if data.get("error_message"):
+                print(data["error_message"])
+            return []
+
+        businesses = []
+
+        for place in data.get("results", []):
+            businesses.append({
+                "source": "GOOGLE_MAPS",
+                "sourceBusinessId": place.get("place_id"),
+                "name": place.get("name"),
+                "category": rubro.strip().capitalize(),
+                "city": ciudad.strip(),
+                "address": place.get("formatted_address"),
+                "rating": place.get("rating", 0.0),
+                "reviewCount": place.get("user_ratings_total", 0),
+                "phone": None,
+                "website": None
+            })
+
+        print(f"Se encontraron {len(businesses)} comercios.")
+        return businesses
+
+    except requests.RequestException as error:
+        print(f"Error consultando Google Places: {error}")
+        return []
+
+
 if __name__ == "__main__":
-    # Prueba rápida independiente
-    res = search_businesses_in_maps("Pizzería", "La Plata")
-    for b in res[:3]:
-        print(f" - {b['name']} ({b['rating']} ⭐) | {b['address']}")
+    resultados = search_businesses_in_maps("Farmacia", "La Plata")
+
+    for comercio in resultados[:5]:
+        print(
+            f"- {comercio['name']} | "
+            f"{comercio['rating']} estrellas | "
+            f"{comercio['address']}"
+        )
