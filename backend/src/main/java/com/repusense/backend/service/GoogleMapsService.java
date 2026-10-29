@@ -4,231 +4,249 @@ package com.repusense.backend.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repusense.backend.model.Business;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class GoogleMapsService {
 
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final String API_URL =
+            "https://api.fetchlayer.dev/google-maps/place-search";
 
-    public GoogleMapsService() {
-        SimpleClientHttpRequestFactory factory =
-                new SimpleClientHttpRequestFactory();
+    private static final int MAX_RESULTS = 200;
+    private static final int MAX_PAGES = 20;
+    private static final int PAGE_SIZE = 10;
+    private static final double MIN_RATING = 1.5;
+    private static final double MAX_RATING = 3.5;
+    private static final int MIN_REVIEWS = 10;
+
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+    private final String apiKey;
+
+    public GoogleMapsService(
+            @Value("${fetchlayer.api.key:}") String apiKey) {
+
+        this.apiKey = apiKey;
+
+        var factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+
         factory.setConnectTimeout(10000);
-        factory.setReadTimeout(35000);
+        factory.setReadTimeout(60000);
+
         this.restTemplate = new RestTemplate(factory);
+        this.objectMapper = new ObjectMapper();
     }
 
     public List<Business> fetchBusinessesByCityAndCategory(
             String city, String category) {
 
+        if (city == null || city.isBlank()) {
+            throw new IllegalArgumentException("Ingresá una ciudad.");
+        }
+
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Ingresá un rubro.");
+        }
+
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "Falta configurar FETCHLAYER_API_KEY.");
+        }
+
+        String cleanCity = city.trim();
+        String cleanCategory = category.trim();
+
+        List<Business> businesses = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        String cursor = null;
+
+        int received = 0;
+        int missingData = 0;
+        int rejectedRating = 0;
+        int rejectedReviews = 0;
+        int duplicates = 0;
+
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.USER_AGENT,
-                    "RepuSense/1.0 (desarrollo local)");
+            for (int page = 0;
+                 page < MAX_PAGES && businesses.size() < MAX_RESULTS;
+                 page++) {
 
-            HttpEntity<Void> request = new HttpEntity<>(headers);
+                var body = objectMapper.createObjectNode();
+                body.put("query", cleanCategory);
+                body.put("location", cleanCity + ", Argentina");
+                body.put("language", "es");
+                body.put("country", "AR");
+                body.put("limit", PAGE_SIZE);
 
-            var geocodingUri = UriComponentsBuilder
-                    .fromUriString(
-                            "https://nominatim.openstreetmap.org/search")
-                    .queryParam("q", city + ", Argentina")
-                    .queryParam("countrycodes", "ar")
-                    .queryParam("format", "jsonv2")
-                    .queryParam("limit", 1)
-                    .build()
-                    .encode()
-                    .toUri();
+                if (cursor != null && !cursor.isBlank()) {
+                    body.put("cursor", cursor);
+                }
 
-            ResponseEntity<String> geocodingResponse =
-                    restTemplate.exchange(
-                            geocodingUri,
-                            HttpMethod.GET,
-                            request,
-                            String.class);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(apiKey);
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-            JsonNode locations = objectMapper.readTree(
-                    geocodingResponse.getBody());
+                HttpEntity<String> request = new HttpEntity<>(
+                        objectMapper.writeValueAsString(body),
+                        headers
+                );
 
-            if (!locations.isArray() || locations.isEmpty()) {
-                throw new IllegalStateException(
-                        "No se encontró la ciudad: " + city);
-            }
+                ResponseEntity<String> response = restTemplate.exchange(
+                        API_URL,
+                        HttpMethod.POST,
+                        request,
+                        String.class
+                );
 
-            double lat = locations.get(0).path("lat").asDouble();
-            double lon = locations.get(0).path("lon").asDouble();
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode places = root.path("places");
 
-            String selectors = buildSelectors(category, lat, lon);
-            String query = "[out:json][timeout:25];("
-                    + selectors
-                    + ");out center tags;";
+                System.out.println("[FetchLayer] Página: " + (page + 1));
+                System.out.println("[FetchLayer] HTTP: "
+                        + response.getStatusCode());
+                System.out.println("[FetchLayer] Campos recibidos: "
+                        + fieldNames(root));
 
-            String[] servers = {
-                    "https://overpass.kumi.systems/api/interpreter",
-                    "https://overpass.private.coffee/api/interpreter",
-                    "https://overpass-api.de/api/interpreter"
-            };
+                if (!places.isArray()) {
+                    System.out.println("[FetchLayer] Respuesta recibida: "
+                            + root);
 
-            String responseBody = null;
-            Exception lastError = null;
+                    throw new IllegalStateException(
+                            "FetchLayer no devolvió una lista en el campo "
+                                    + "'places'.");
+                }
 
-            for (String server : servers) {
-                try {
-                    var overpassUri = UriComponentsBuilder
-                            .fromUriString(server)
-                            .queryParam("data", query)
-                            .build()
-                            .encode()
-                            .toUri();
+                System.out.println("[FetchLayer] Comercios recibidos: "
+                        + places.size());
 
-                    ResponseEntity<String> response =
-                            restTemplate.exchange(
-                                    overpassUri,
-                                    HttpMethod.GET,
-                                    request,
-                                    String.class);
+                received += places.size();
 
-                    responseBody = response.getBody();
-
-                    if (responseBody != null && !responseBody.isBlank()) {
+                for (JsonNode place : places) {
+                    if (businesses.size() >= MAX_RESULTS) {
                         break;
                     }
-                } catch (Exception e) {
-                    lastError = e;
+
+                    String placeId =
+                            place.path("placeId").asText("").trim();
+
+                    String name =
+                            place.path("name").asText("").trim();
+
+                    JsonNode ratingNode = place.path("rating");
+                    JsonNode reviewsNode = place.path("reviewCount");
+
+                    if (placeId.isBlank()
+                            || name.isBlank()
+                            || !ratingNode.isNumber()
+                            || !reviewsNode.isIntegralNumber()
+                            || !reviewsNode.canConvertToInt()) {
+
+                        missingData++;
+
+                        System.out.println(
+                                "[FetchLayer] Comercio descartado: "
+                                        + name
+                                        + " | Faltan identificador, nombre, "
+                                        + "calificación o cantidad de reseñas."
+                        );
+
+                        continue;
+                    }
+
+                    double rating = ratingNode.asDouble();
+                    int reviewCount = reviewsNode.asInt();
+
+                    System.out.println(
+                            "[FetchLayer] Comercio: " + name
+                                    + " | Calificación: " + rating
+                                    + " | Reseñas: " + reviewCount
+                    );
+
+                    if (rating < 0 || rating > 5 || reviewCount < 0) {
+                        missingData++;
+                        continue;
+                    }
+
+                    if (rating < MIN_RATING || rating >= MAX_RATING) {
+                        rejectedRating++;
+                        continue;
+                    }
+
+                    if (reviewCount <= MIN_REVIEWS) {
+                        rejectedReviews++;
+                        continue;
+                    }
+
+                    if (!seen.add(placeId)) {
+                        duplicates++;
+                        continue;
+                    }
+
+                    Business business = Business.builder()
+                            .source("FETCHLAYER_GOOGLE_MAPS")
+                            .sourceBusinessId(placeId)
+                            .name(name)
+                            .city(cleanCity)
+                            .category(cleanCategory)
+                            .address(place.path("address").asText(""))
+                            .phone(place.path("phone").asText(""))
+                            .website(place.path("website").asText(""))
+                            .rating(rating)
+                            .reviewCount(reviewCount)
+                            .build();
+
+                    businesses.add(business);
+                }
+
+                cursor = root.path("nextCursor").asText("");
+
+                if (cursor.isBlank()) {
+                    System.out.println(
+                            "[FetchLayer] No hay más páginas disponibles.");
+                    break;
                 }
             }
 
-            if (responseBody == null || responseBody.isBlank()) {
-                throw new IllegalStateException(
-                        "No se pudo obtener respuesta de los servidores "
-                                + "de OpenStreetMap. Último error: "
-                                + (lastError != null
-                                ? lastError.getMessage()
-                                : "respuesta vacía"));
-            }
-
-            JsonNode elements = objectMapper.readTree(responseBody)
-                    .path("elements");
-
-            List<Business> businesses = new ArrayList<>();
-
-            for (JsonNode element : elements) {
-                JsonNode tags = element.path("tags");
-                String name = tags.path("name").asText("").trim();
-
-                if (name.isBlank()) {
-                    continue;
-                }
-
-                String type = element.path("type").asText();
-                long id = element.path("id").asLong();
-
-                String street = tags.path("addr:street").asText("");
-                String number = tags.path("addr:housenumber").asText("");
-                String address = (street + " " + number).trim();
-
-                if (address.isBlank()) {
-                    address = tags.path("addr:full").asText(city);
-                }
-
-                String phone = tags.path("phone")
-                        .asText(tags.path("contact:phone").asText(""));
-
-                String website = tags.path("website")
-                        .asText(tags.path("contact:website").asText(""));
-
-                Business business = Business.builder()
-                        .source("OPENSTREETMAP")
-                        .sourceBusinessId("OSM_" + type + "_" + id)
-                        .name(name)
-                        .city(city)
-                        .category(category)
-                        .address(address)
-                        .phone(phone)
-                        .website(website)
-                        .rating(0.0)
-                        .reviewCount(0)
-                        .build();
-
-                businesses.add(business);
-            }
+            System.out.println("[FetchLayer] RESUMEN");
+            System.out.println("[FetchLayer] Recibidos: " + received);
+            System.out.println("[FetchLayer] Sin datos necesarios: "
+                    + missingData);
+            System.out.println("[FetchLayer] Descartados por calificación: "
+                    + rejectedRating);
+            System.out.println("[FetchLayer] Descartados por reseñas: "
+                    + rejectedReviews);
+            System.out.println("[FetchLayer] Duplicados: " + duplicates);
+            System.out.println("[FetchLayer] Leads potenciales encontrados: "
+                    + businesses.size());
 
             return businesses;
 
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Error al consultar OpenStreetMap: "
+                    "Error al buscar comercios en FetchLayer: "
                             + e.getMessage(), e);
         }
     }
 
-    private String buildSelectors(
-            String category, double lat, double lon) {
-
-        String normalized = Normalizer.normalize(
-                        category == null ? "" : category,
-                        Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .toLowerCase(Locale.ROOT);
-
-        String around = "(around:10000," + lat + "," + lon + ")";
-
-        if (normalized.contains("farmacia")) {
-            return "nwr" + around
-                    + "[\"name\"][\"amenity\"=\"pharmacy\"];";
-        }
-
-        if (normalized.contains("dent") || normalized.contains("clinic")) {
-            return "nwr" + around
-                    + "[\"name\"][\"amenity\"~\"clinic|dentist|doctors\"];";
-        }
-
-        if (normalized.contains("universidad")) {
-            return "nwr" + around
-                    + "[\"name\"][\"amenity\"~\"university|college\"];";
-        }
-
-        if (normalized.contains("hotel")) {
-            return "nwr" + around
-                    + "[\"name\"][\"tourism\"~\"hotel|motel|hostel|guest_house\"];";
-        }
-
-        if (normalized.contains("gimnas") || normalized.contains("gym")) {
-            return "nwr" + around
-                    + "[\"name\"][\"leisure\"=\"fitness_centre\"];";
-        }
-
-        if (normalized.contains("panader")) {
-            return "nwr" + around
-                    + "[\"name\"][\"shop\"=\"bakery\"];";
-        }
-
-        if (normalized.contains("restaurante")
-                || normalized.contains("restaurant")) {
-            return "nwr" + around
-                    + "[\"name\"][\"amenity\"~\"restaurant|fast_food|cafe\"];";
-        }
-
-        return "nwr" + around
-                + "[\"name\"][\"amenity\"~\"pharmacy|clinic|dentist|university|college|restaurant|cafe|fast_food|bank|fuel|hospital|doctors\"];"
-                + "nwr" + around
-                + "[\"name\"][\"shop\"~\"bakery|supermarket|convenience\"];"
-                + "nwr" + around
-                + "[\"name\"][\"tourism\"~\"hotel|hostel|guest_house\"];"
-                + "nwr" + around
-                + "[\"name\"][\"leisure\"=\"fitness_centre\"];";
+    private String fieldNames(JsonNode node) {
+        List<String> names = new ArrayList<>();
+        node.fieldNames().forEachRemaining(names::add);
+        return names.toString();
     }
 }
