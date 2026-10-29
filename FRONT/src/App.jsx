@@ -1,299 +1,1039 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import "./App.css";
 
-export default function App() {
-  const [comercios, setComercios] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [dbaConectado, setDbaConectado] = useState(true);
-  const [filtroUbicacion, setFiltroUbicacion] = useState('todos');
-  const [filtroRiesgo, setFiltroRiesgo] = useState('todos');
-  const [filtroProblema, setFiltroProblema] = useState('todos');
-  const [alerta, setAlerta] = useState(null);
-  const [enviando, setEnviando] = useState(false);
+const API_BASE = (
+  import.meta.env.VITE_API_URL || "http://localhost:8080"
+).replace(/\/$/, "");
 
-  // URL de tu Backend Spring Boot
-  const BACKEND_URL = "http://localhost:8080/api/v1";
+const API = `${API_BASE}/api/v1`;
+const SEARCH_API = `${API_BASE}/api/searches`;
 
-  // Función para mostrar alertas temporales
-  const showAlert = (mensaje, tipo = "info") => {
-    setAlerta({ mensaje, tipo });
-    setTimeout(() => setAlerta(null), 5000);
-  };
+const emptySearch = {
+  city: "La Plata",
+  category: "farmacia",
+};
 
-  // 1. Conexión y Diagnóstico al presionar el botón
-  const ejecutarDiagnostico = async () => {
-    setLoading(true);
-    setAlerta(null);
+function getLeads(response) {
+  const data = response?.data;
 
-    try {
-      // 1. Petición al Backend para obtener Leads o Comercios analizados
-      const res = await axios.get(`${BACKEND_URL}/leads`);
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.data)) return data.data;
 
-      // Adaptar respuesta (Spring Boot devuelve estructura Page { content: [...] } o array)
-      const data = res.data.content ? res.data.content : res.data;
+  return [];
+}
 
-      const adaptados = data.map((item, idx) => {
-        const pLower = (item.aiMainProblem || "").toLowerCase();
-        let problema = "atencion";
-        let riesgo = 4;
+function businessOf(lead) {
+  return lead?.business || lead?.businesses || {};
+}
 
-        if (pLower.includes("higiene") || pLower.includes("sanitar") || pLower.includes("limpiez")) {
-          problema = "higiene";
-          riesgo = 5;
-        } else if (pLower.includes("espera") || pLower.includes("demora") || pLower.includes("tardo")) {
-          problema = "demoras";
-          riesgo = 3;
-        } else if (pLower.includes("tarifa") || pLower.includes("precio") || pLower.includes("cobro")) {
-          problema = "precios";
-          riesgo = 4;
-        } else if (pLower.includes("atenci") || pLower.includes("trato")) {
-          problema = "atencion";
-          riesgo = 4;
-        }
+function leadStatus(status) {
+  const value = String(status || "NEW").toUpperCase();
 
-        return {
-          id: item.id || idx + 1,
-          negocio: item.business?.name || item.name || "Comercio",
-          email: item.contactEmail || "contacto@comercio.com",
-          ubicacion: item.business?.city || "Buenos Aires, Argentina",
-          rubro: item.business?.category || "Gastronomía",
-          riesgo,
-          problema,
-          resumen: item.aiEmailOpening || "Diagnóstico de reputación en proceso.",
-          status: item.status === "CONTACTED" ? "Contactado" : "No contactado",
-          seleccionado: false
-        };
-      });
+  if (value === "CONTACTED") return "Contactado";
+  if (value === "ANALYZED") return "Analizado";
+  if (value === "FAILED") return "Error";
 
-      setComercios(adaptados);
-      setDbaConectado(true);
-      showAlert(`Diagnóstico completado. Se cargaron ${adaptados.length} comercios analizados.`, "success");
-    } catch (error) {
-      console.error("Error conectando al backend:", error);
-      setDbaConectado(false);
-      showAlert("❌ Error de conexión: No se pudo conectar con el Backend (localhost:8080) ni PostgreSQL.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  return "Nuevo";
+}
 
-  // Manejo de Selección de Checkbox
-  const toggleSeleccion = (id) => {
-    setComercios(prev => prev.map(c => c.id === id ? { ...c, seleccionado: !c.seleccionado } : c));
-  };
+function problemFromAnalysis(analysis = "") {
+  const text = analysis.toLowerCase();
 
-  const seleccionados = comercios.filter(c => c.seleccionado);
+  if (/higiene|limpieza|sanitari|suciedad/.test(text)) return "Higiene";
+  if (/demora|espera|tardanza|tiempo de atención/.test(text)) return "Demoras";
+  if (/precio|tarifa|costo|cobro/.test(text)) return "Precios";
+  if (/atención|atencion|trato|servicio al cliente/.test(text)) return "Atención";
 
-  // Enviar correos y actualizar estado a CONTACTED en backend y frontend
-  const enviarCorreos = async () => {
-    if (seleccionados.length === 0) return;
-    setEnviando(true);
-    try {
-      await Promise.all(
-        seleccionados.map(s =>
-          axios.patch(`${BACKEND_URL}/leads/${s.id}/status`, { status: "CONTACTED" })
-        )
-      );
-      setComercios(prev =>
-        prev.map(c => (c.seleccionado ? { ...c, status: "Contactado", seleccionado: false } : c))
-      );
-      showAlert(`¡Correos enviados con éxito a ${seleccionados.length} comercios! Estado actualizado a Contactado.`, "success");
-    } catch (error) {
-      console.error("Error al actualizar estado:", error);
-      showAlert("⚠️ No se pudo actualizar el estado de los correos en la base de datos.", "error");
-    } finally {
-      setEnviando(false);
-    }
-  };
+  return "Sin clasificar";
+}
 
-  // Filtrado reactivo en pantalla
-  const comerciosFiltrados = comercios.filter(c => {
-    if (filtroUbicacion !== 'todos' && !c.ubicacion.toLowerCase().includes(filtroUbicacion)) return false;
-    if (filtroRiesgo !== 'todos' && c.riesgo !== parseInt(filtroRiesgo)) return false;
-    if (filtroProblema !== 'todos' && c.problema !== filtroProblema) return false;
-    return true;
-  });
+function riskFromAnalysis(analysis = "") {
+  const text = analysis.toLowerCase();
+
+  if (/crítico|critico|muy negativo|grave|urgente/.test(text)) return 5;
+  if (/alto|negativo|mala experiencia|recurrente/.test(text)) return 4;
+  if (/moderado|regular|mejorar/.test(text)) return 3;
+  if (/positivo|buena experiencia|satisfacción|satisfaccion/.test(text)) return 1;
+
+  return null;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleString("es-AR");
+}
+
+function validRating(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const rating = Number(value);
+
+  return Number.isFinite(rating) && rating > 0 && rating <= 5
+    ? rating
+    : null;
+}
+
+function validReviewCount(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const count = Number(value);
+
+  return Number.isInteger(count) && count > 0
+    ? count
+    : null;
+}
+
+function formatRating(value) {
+  const rating = validRating(value);
+
+  return rating === null ? "Sin datos" : rating.toFixed(1);
+}
+
+function formatReviewCount(value) {
+  const count = validReviewCount(value);
+
+  return count === null ? "Sin datos" : count.toLocaleString("es-AR");
+}
+
+function RatingStars({ rating }) {
+  const valid = validRating(rating);
+
+  if (valid === null) {
+    return <span className="muted">Sin datos</span>;
+  }
 
   return (
-    <div className="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <i className="fa-solid fa-shield-halved text-white text-lg"></i>
-            </div>
-            <div>
-              <h1 className="font-bold text-lg text-white">REPUSENSE - Dashboard</h1>
-              <p className="text-xs text-slate-400">Radar de reputación y prospección inteligente con IA</p>
-            </div>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+      title={`Calificación recibida: ${formatRating(valid)} sobre 5`}
+    >
+      <span
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "3px",
+          color: "#e5a000",
+        }}
+        role="img"
+        aria-label={`Calificación ${formatRating(valid)} sobre 5`}
+      >
+        {[1, 2, 3, 4, 5].map((star) => {
+          const difference = valid - star;
+          let icon = "fa-regular fa-star";
+
+          if (difference >= 0) {
+            icon = "fa-solid fa-star";
+          } else if (difference >= -0.5) {
+            icon = "fa-solid fa-star-half-stroke";
+          }
+
+          return (
+            <i
+              key={star}
+              className={icon}
+              style={{
+                color:
+                  icon === "fa-regular fa-star"
+                    ? "#cbd5e1"
+                    : "#e5a000",
+              }}
+            />
+          );
+        })}
+      </span>
+
+      <span className="cell-main">{formatRating(valid)}/5</span>
+    </div>
+  );
+}
+
+export default function App() {
+  const [leads, setLeads] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [searchForm, setSearchForm] = useState(emptySearch);
+  const [cityFilter, setCityFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [query, setQuery] = useState("");
+
+  const [loadingLeads, setLoadingLeads] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [analyzingId, setAnalyzingId] = useState(null);
+  const [exporting, setExporting] = useState(false);
+
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [connection, setConnection] = useState("checking");
+
+  const [analysisById, setAnalysisById] = useState({});
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [activeTab, setActiveTab] = useState("leads");
+
+  const loadLeads = useCallback(async () => {
+    setLoadingLeads(true);
+
+    try {
+      const response = await axios.get(`${API}/leads`, {
+        params: { page: 0, size: 100 },
+        timeout: 20000,
+      });
+
+      const loadedLeads = getLeads(response);
+      setLeads(loadedLeads);
+
+      const savedAnalyses = {};
+
+      loadedLeads.forEach((lead) => {
+        if (lead.aiAnalysis) {
+          savedAnalyses[lead.id] = lead.aiAnalysis;
+        }
+      });
+
+      setAnalysisById((previous) => ({
+        ...previous,
+        ...savedAnalyses,
+      }));
+
+      setConnection("connected");
+      setError("");
+    } catch (err) {
+      setConnection("disconnected");
+      setError(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          "No se pudo consultar el backend. Verificá que Spring Boot esté iniciado en el puerto 8080."
+      );
+    } finally {
+      setLoadingLeads(false);
+    }
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const response = await axios.get(SEARCH_API, { timeout: 20000 });
+
+      setHistory(
+        Array.isArray(response.data) ? [...response.data].reverse() : []
+      );
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLeads();
+    loadHistory();
+  }, [loadLeads, loadHistory]);
+
+  const businesses = useMemo(
+    () =>
+      leads.map((lead) => {
+        const business = businessOf(lead);
+        const analysis = analysisById[lead.id] || lead.aiAnalysis || "";
+
+        return {
+          ...lead,
+          business,
+          displayName: business.name || lead.name || `Comercio #${lead.id}`,
+          city: business.city || "Sin ubicación",
+          category: business.category || "Sin rubro",
+          address: business.address || "",
+          website: business.website || "",
+          phone: business.phone || "",
+          rating: validRating(business.rating),
+          reviewCount: validReviewCount(business.reviewCount),
+          statusLabel: leadStatus(lead.status),
+          analysis,
+          problem: analysis
+            ? problemFromAnalysis(analysis)
+            : "Pendiente de análisis",
+          risk: analysis ? riskFromAnalysis(analysis) : null,
+        };
+      }),
+    [leads, analysisById]
+  );
+
+  const filteredBusinesses = useMemo(
+    () =>
+      businesses.filter((item) => {
+        const search = query.trim().toLowerCase();
+
+        const matchesQuery =
+          !search ||
+          [
+            item.displayName,
+            item.city,
+            item.category,
+            item.address,
+            item.phone,
+          ].some((value) =>
+            String(value || "").toLowerCase().includes(search)
+          );
+
+        const matchesCity =
+          !cityFilter ||
+          item.city.toLowerCase().includes(cityFilter.toLowerCase());
+
+        const matchesStatus =
+          statusFilter === "todos" ||
+          String(item.status || "NEW").toUpperCase() === statusFilter;
+
+        return matchesQuery && matchesCity && matchesStatus;
+      }),
+    [businesses, query, cityFilter, statusFilter]
+  );
+
+  const stats = useMemo(
+    () => ({
+      total: leads.length,
+      new: leads.filter(
+        (lead) => String(lead.status || "NEW").toUpperCase() === "NEW"
+      ).length,
+      contacted: leads.filter(
+        (lead) => String(lead.status || "").toUpperCase() === "CONTACTED"
+      ).length,
+      analyzed: leads.filter(
+        (lead) => Boolean(lead.aiAnalysis || analysisById[lead.id])
+      ).length,
+      searches: history.length,
+    }),
+    [leads, analysisById, history]
+  );
+
+  const runSearch = async (event) => {
+    event.preventDefault();
+
+    if (!searchForm.city.trim() || !searchForm.category.trim()) {
+      setError("Ingresá una ciudad y un rubro para comenzar la búsqueda.");
+      return;
+    }
+
+    setSearching(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await axios.post(
+        SEARCH_API,
+        {
+          city: searchForm.city.trim(),
+          category: searchForm.category.trim(),
+        },
+        { timeout: 120000 }
+      );
+
+      const result = response.data || {};
+
+      setNotice(
+        `Búsqueda ${result.status || "completada"}: ${
+          result.foundCount ?? 0
+        } comercios encontrados y ${
+          result.savedCount ?? 0
+        } procesados/guardados.`
+      );
+
+      await Promise.all([loadLeads(), loadHistory()]);
+      setActiveTab("leads");
+    } catch (err) {
+      const data = err.response?.data;
+      const message =
+        typeof data === "string"
+          ? data
+          : data?.error || data?.message || err.message;
+
+      setError(
+        `La búsqueda no se pudo completar. ${
+          message || "Revisá el backend y la fuente de comercios."
+        }`
+      );
+
+      await loadHistory();
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const analyzeLead = async (lead) => {
+    setAnalyzingId(lead.id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await axios.post(
+        `${API}/leads/${lead.id}/analyze`,
+        {},
+        { timeout: 90000 }
+      );
+
+      const analysis = response.data?.analysis;
+
+      if (typeof analysis !== "string" || !analysis.trim()) {
+        throw new Error("El backend no devolvió un análisis válido.");
+      }
+
+      setAnalysisById((previous) => ({
+        ...previous,
+        [lead.id]: analysis,
+      }));
+
+      setLeads((previous) =>
+        previous.map((item) =>
+          item.id === lead.id
+            ? {
+                ...item,
+                aiAnalysis: analysis,
+                status:
+                  String(item.status || "").toUpperCase() === "CONTACTED"
+                    ? "CONTACTED"
+                    : "ANALYZED",
+              }
+            : item
+        )
+      );
+
+      setSelectedLead({
+        ...lead,
+        aiAnalysis: analysis,
+        analysis,
+        status:
+          String(lead.status || "").toUpperCase() === "CONTACTED"
+            ? "CONTACTED"
+            : "ANALYZED",
+      });
+
+      setNotice(`Análisis generado y guardado para ${lead.displayName}.`);
+    } catch (err) {
+      const data = err.response?.data;
+      const message =
+        typeof data === "string"
+          ? data
+          : data?.error || data?.message || err.message;
+
+      setError(`No se pudo analizar ${lead.displayName}. ${message}`);
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
+
+  const markContacted = async (lead) => {
+    setError("");
+    setNotice("");
+
+    try {
+      await axios.patch(`${API}/leads/${lead.id}/status`, {
+        status: "CONTACTED",
+      });
+
+      setLeads((previous) =>
+        previous.map((item) =>
+          item.id === lead.id ? { ...item, status: "CONTACTED" } : item
+        )
+      );
+
+      setNotice(
+        `${lead.displayName} quedó marcado como contactado. No se envió ningún correo.`
+      );
+    } catch (err) {
+      setError(
+        `No se pudo actualizar el estado del lead: ${
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message
+        }`
+      );
+    }
+  };
+
+  const openAnalysis = (lead) => {
+    setSelectedLead({
+      ...lead,
+      analysis:
+        analysisById[lead.id] || lead.aiAnalysis || lead.analysis || "",
+    });
+  };
+
+  const exportCsv = async () => {
+    setError("");
+    setNotice("");
+    setExporting(true);
+
+    try {
+      const response = await axios.get(`${API}/leads/export/csv`, {
+        responseType: "blob",
+        timeout: 30000,
+      });
+
+      const blob = new Blob([response.data], {
+        type: "text/csv;charset=utf-8;",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "repusense-leads.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setNotice("El archivo CSV se descargó correctamente.");
+    } catch (err) {
+      setError(
+        `No se pudo exportar el CSV. ${
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message
+        }`
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-mark">
+            <i className="fa-solid fa-shield-halved" />
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-            <span className={`w-2.5 h-2.5 rounded-full ${dbaConectado ? 'bg-emerald-500 animate-ping' : 'bg-rose-500'}`}></span>
-            <span>{dbaConectado ? 'DBA Conectado en Vivo' : 'DBA Desconectado'}</span>
+          <div>
+            <h1>RepuSense</h1>
+            <p>Radar de reputación y prospección inteligente con IA</p>
           </div>
+        </div>
+
+        <div className={`connection-pill ${connection}`}>
+          <span className="connection-dot" />
+          {connection === "connected"
+            ? "Backend conectado"
+            : connection === "disconnected"
+              ? "Backend desconectado"
+              : "Comprobando conexión"}
         </div>
       </header>
 
-      {/* Alerta Global */}
-      {alerta && (
-        <div className="max-w-7xl mx-auto px-4 mt-4 w-full">
-          <div className={`p-4 rounded-xl flex items-center justify-between border text-sm ${alerta.tipo === 'error' ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-            }`}>
-            <span>{alerta.mensaje}</span>
-            <button onClick={() => setAlerta(null)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
-        {/* Panel de Filtros y Acción */}
-        <div className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs text-slate-300">Ubicación</label>
-              <select value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                <option value="todos">Todas las ubicaciones</option>
-                <option value="buenos aires">Buenos Aires</option>
-                <option value="cordoba">Córdoba</option>
-                <option value="rosario">Rosario</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-300">Scoring / Riesgo</label>
-              <select value={filtroRiesgo} onChange={e => setFiltroRiesgo(e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                <option value="todos">Todos los niveles</option>
-                <option value="5">Nivel 5 (Crítico)</option>
-                <option value="4">Nivel 4 (Alto)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-300">Problema Raíz</label>
-              <select value={filtroProblema} onChange={e => setFiltroProblema(e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                <option value="todos">Cualquier problema</option>
-                <option value="higiene">Higiene</option>
-                <option value="atencion">Atención</option>
-                <option value="demoras">Demoras</option>
-                <option value="precios">Precios / Tarifas</option>
-              </select>
-            </div>
+      <main className="page-content">
+        <section className="welcome-row">
+          <div>
+            <p className="eyebrow">CENTRO DE CONTROL</p>
+            <h2>Panel de prospección</h2>
+            <p className="muted">
+              Buscá comercios reales, consultá tus leads y analizá la
+              información disponible con IA.
+            </p>
           </div>
 
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={ejecutarDiagnostico}
-              disabled={loading}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 flex items-center gap-2 text-sm disabled:opacity-50"
-            >
-              <i className={`fa-solid ${loading ? 'fa-circle-notch fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
-              <span>{loading ? "Ejecutando diagnóstico..." : "Comenzar Diagnóstico"}</span>
+          <button
+            className="button button-secondary"
+            onClick={() => {
+              loadLeads();
+              loadHistory();
+            }}
+            disabled={loadingLeads || searching}
+          >
+            <i
+              className={`fa-solid ${
+                loadingLeads ? "fa-spinner fa-spin" : "fa-rotate"
+              }`}
+            />
+            Actualizar datos
+          </button>
+        </section>
+
+        {error && (
+          <div className="notice notice-error">
+            <i className="fa-solid fa-circle-exclamation" />
+            <span>{error}</span>
+            <button onClick={() => setError("")} aria-label="Cerrar">
+              ×
             </button>
-          </div>
-        </div>
-
-        {/* Vista de Carga Doble (DBA + IA) */}
-        {loading && (
-          <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-10 text-center space-y-4">
-            <div className="flex items-center justify-center gap-8">
-              <div className="flex flex-col items-center">
-                <i className="fa-solid fa-database text-3xl text-blue-400 animate-pulse"></i>
-                <span className="text-xs text-amber-400 mt-2 font-medium">1. Consultando PostgreSQL...</span>
-              </div>
-              <i className="fa-solid fa-arrow-right text-slate-600 text-xl"></i>
-              <div className="flex flex-col items-center">
-                <i className="fa-solid fa-brain text-3xl text-indigo-400 animate-pulse"></i>
-                <span className="text-xs text-indigo-400 mt-2 font-medium">2. Evaluando reseñas con IA...</span>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Layout Principal: Tabla + Panel Lateral de IA */}
-        {!loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className={`${seleccionados.length > 0 ? 'lg:col-span-7' : 'lg:col-span-12'} bg-slate-800/70 border border-slate-700/80 rounded-2xl p-6 shadow-xl`}>
-              <h2 className="text-base font-bold text-white mb-4">
-                Comercios Identificados ({comerciosFiltrados.length})
-              </h2>
+        {notice && (
+          <div className="notice notice-success">
+            <i className="fa-solid fa-circle-check" />
+            <span>{notice}</span>
+            <button onClick={() => setNotice("")} aria-label="Cerrar">
+              ×
+            </button>
+          </div>
+        )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-900/50 text-slate-400 uppercase">
-                    <tr>
-                      <th className="p-3 text-center">Sel.</th>
-                      <th className="p-3">Estado</th>
-                      <th className="p-3">Comercio</th>
-                      <th className="p-3">Ubicación</th>
-                      <th className="p-3 text-center">Riesgo</th>
-                      <th className="p-3">Problema</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700/50">
-                    {comerciosFiltrados.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-800/40">
-                        <td className="p-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={item.seleccionado}
-                            onChange={() => toggleSeleccion(item.id)}
-                            className="rounded bg-slate-900 text-blue-600 cursor-pointer"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] ${item.status === 'Contactado' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                            }`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="p-3 font-semibold text-white">{item.negocio}</td>
-                        <td className="p-3 text-slate-300">{item.ubicacion}</td>
-                        <td className="p-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.riesgo >= 5 ? 'bg-rose-600 text-white' : 'bg-amber-500 text-slate-900'
-                            }`}>
-                            {item.riesgo}
-                          </span>
-                        </td>
-                        <td className="p-3 capitalize">{item.problema}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        <section className="stats-grid">
+          <article className="stat-card">
+            <div className="stat-icon blue">
+              <i className="fa-solid fa-store" />
+            </div>
+            <div>
+              <span>Leads disponibles</span>
+              <strong>{stats.total}</strong>
+              <small>Registros devueltos por el backend</small>
+            </div>
+          </article>
+
+          <article className="stat-card">
+            <div className="stat-icon amber">
+              <i className="fa-solid fa-bolt" />
+            </div>
+            <div>
+              <span>Leads nuevos</span>
+              <strong>{stats.new}</strong>
+              <small>Pendientes de gestión</small>
+            </div>
+          </article>
+
+          <article className="stat-card">
+            <div className="stat-icon green">
+              <i className="fa-solid fa-address-card" />
+            </div>
+            <div>
+              <span>Contactados</span>
+              <strong>{stats.contacted}</strong>
+              <small>Marcados en el sistema</small>
+            </div>
+          </article>
+
+          <article className="stat-card">
+            <div className="stat-icon violet">
+              <i className="fa-solid fa-brain" />
+            </div>
+            <div>
+              <span>Análisis recibidos</span>
+              <strong>{stats.analyzed}</strong>
+              <small>Resultados guardados en el sistema</small>
+            </div>
+          </article>
+        </section>
+
+        <section className="panel search-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="section-icon">
+                <i className="fa-solid fa-magnifying-glass-location" />
+              </span>
+              <div>
+                <h3>Buscar comercios</h3>
+                <p>
+                  La búsqueda se ejecuta en el backend y guarda los
+                  resultados válidos en la base de datos.
+                </p>
               </div>
             </div>
+            <span className="tag tag-blue">Búsqueda real</span>
+          </div>
 
-            {/* Panel Lateral Desplegable de IA */}
-            {seleccionados.length > 0 && (
-              <div className="lg:col-span-5 bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center justify-between">
-                  <span>Emails con IA ({seleccionados.length})</span>
-                  <span className="text-xs text-blue-400 font-mono">Borradores Listos</span>
-                </h3>
+          <form className="search-form" onSubmit={runSearch}>
+            <label>
+              Ciudad
+              <input
+                value={searchForm.city}
+                onChange={(e) =>
+                  setSearchForm({ ...searchForm, city: e.target.value })
+                }
+                placeholder="Ej. La Plata"
+              />
+            </label>
 
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {seleccionados.map(s => (
-                    <div key={s.id} className="bg-slate-900/80 p-3 rounded-xl border border-slate-700/80 space-y-1">
-                      <p className="text-xs font-bold text-white">{s.negocio}</p>
-                      <p className="text-[11px] text-slate-300 italic bg-slate-800/50 p-2 rounded">
-                        "{s.resumen}"
-                      </p>
-                    </div>
-                  ))}
+            <label>
+              Rubro
+              <input
+                value={searchForm.category}
+                onChange={(e) =>
+                  setSearchForm({ ...searchForm, category: e.target.value })
+                }
+                placeholder="Ej. farmacia, hotel, restaurante"
+              />
+            </label>
+
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={searching}
+            >
+              <i
+                className={`fa-solid ${
+                  searching
+                    ? "fa-spinner fa-spin"
+                    : "fa-magnifying-glass"
+                }`}
+              />
+              {searching ? "Buscando comercios..." : "Iniciar búsqueda"}
+            </button>
+          </form>
+
+          {searching && (
+            <div className="progress-line">
+              <span />
+            </div>
+          )}
+
+          <p className="help-text">
+            <i className="fa-solid fa-circle-info" />
+            Las calificaciones y reseñas se muestran solo cuando la fuente
+            las proporciona. La búsqueda actual utiliza OpenStreetMap.
+          </p>
+        </section>
+
+        <section className="panel data-panel">
+          <div className="tabs">
+            <button
+              className={activeTab === "leads" ? "tab active" : "tab"}
+              onClick={() => setActiveTab("leads")}
+            >
+              <i className="fa-solid fa-list-check" />
+              Comercios y leads
+              <span>{businesses.length}</span>
+            </button>
+
+            <button
+              className={activeTab === "history" ? "tab active" : "tab"}
+              onClick={() => setActiveTab("history")}
+            >
+              <i className="fa-solid fa-clock-rotate-left" />
+              Historial
+              <span>{history.length}</span>
+            </button>
+          </div>
+
+          {activeTab === "leads" ? (
+            <>
+              <div className="table-toolbar">
+                <div>
+                  <h3>Comercios identificados</h3>
+                  <p>
+                    {filteredBusinesses.length} resultados visibles de{" "}
+                    {businesses.length} leads cargados
+                  </p>
+                </div>
+
+                <div className="filters">
+                  <input
+                    aria-label="Buscar comercio"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar por nombre, rubro..."
+                  />
+
+                  <input
+                    aria-label="Filtrar ciudad"
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    placeholder="Filtrar ciudad"
+                  />
+
+                  <select
+                    aria-label="Filtrar estado"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="todos">Todos los estados</option>
+                    <option value="NEW">Nuevo</option>
+                    <option value="ANALYZED">Analizado</option>
+                    <option value="CONTACTED">Contactado</option>
+                    <option value="FAILED">Error</option>
+                  </select>
+
+                  <button
+                    className="button button-secondary"
+                    onClick={exportCsv}
+                    disabled={exporting}
+                    type="button"
+                  >
+                    <i
+                      className={`fa-solid ${
+                        exporting
+                          ? "fa-spinner fa-spin"
+                          : "fa-file-csv"
+                      }`}
+                    />
+                    {exporting ? "Exportando..." : "Exportar CSV"}
+                  </button>
+                </div>
+              </div>
+
+              {loadingLeads ? (
+                <div className="empty-state">
+                  <i className="fa-solid fa-spinner fa-spin" />
+                  <p>Cargando leads desde el backend...</p>
+                </div>
+              ) : filteredBusinesses.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">
+                    <i className="fa-solid fa-store-slash" />
+                  </div>
+                  <h4>No hay comercios para mostrar</h4>
+                  <p>
+                    Ejecutá una búsqueda por ciudad y rubro o cambiá los
+                    filtros. No se muestran datos de ejemplo.
+                  </p>
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Comercio</th>
+                        <th>Ubicación / rubro</th>
+                        <th>Calificación</th>
+                        <th>Cantidad de reseñas</th>
+                        <th>Estado</th>
+                        <th>Riesgo</th>
+                        <th>Problema detectado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {filteredBusinesses.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            <div className="business-name">
+                              {item.displayName}
+                            </div>
+                            <div className="subtext">
+                              {item.address ||
+                                item.phone ||
+                                `Lead #${item.id}`}
+                            </div>
+                          </td>
+
+                          <td>
+                            <span className="cell-main">{item.city}</span>
+                            <span className="subtext">{item.category}</span>
+                          </td>
+
+                          <td>
+                            <RatingStars rating={item.rating} />
+                          </td>
+
+                          <td>{formatReviewCount(item.reviewCount)}</td>
+
+                          <td>
+                            <span
+                              className={`status status-${String(
+                                item.status || "NEW"
+                              ).toLowerCase()}`}
+                            >
+                              {item.statusLabel}
+                            </span>
+                          </td>
+
+                          <td>
+                            {item.risk ? (
+                              <span className={`risk risk-${item.risk}`}>
+                                {item.risk}/5
+                              </span>
+                            ) : (
+                              <span className="muted">Sin evaluar</span>
+                            )}
+                          </td>
+
+                          <td>{item.problem}</td>
+
+                          <td>
+                            <div className="action-buttons">
+                              <button
+                                className="icon-button"
+                                title="Analizar con Gemini"
+                                aria-label={`Analizar ${item.displayName}`}
+                                onClick={() => analyzeLead(item)}
+                                disabled={analyzingId === item.id}
+                              >
+                                <i
+                                  className={`fa-solid ${
+                                    analyzingId === item.id
+                                      ? "fa-spinner fa-spin"
+                                      : "fa-brain"
+                                  }`}
+                                />
+                              </button>
+
+                              <button
+                                className="icon-button"
+                                title="Ver análisis guardado"
+                                aria-label={`Ver análisis de ${item.displayName}`}
+                                onClick={() => openAnalysis(item)}
+                                disabled={!item.analysis}
+                              >
+                                <i className="fa-solid fa-eye" />
+                              </button>
+
+                              <button
+                                className="icon-button"
+                                title="Marcar como contactado (no envía correo)"
+                                aria-label={`Marcar contactado a ${item.displayName}`}
+                                onClick={() => markContacted(item)}
+                                disabled={
+                                  String(item.status).toUpperCase() ===
+                                  "CONTACTED"
+                                }
+                              >
+                                <i className="fa-solid fa-user-check" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="table-toolbar">
+                <div>
+                  <h3>Historial de búsquedas</h3>
+                  <p>
+                    {history.length} ejecuciones registradas por el backend
+                  </p>
                 </div>
 
                 <button
-                  onClick={enviarCorreos}
-                  disabled={enviando}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="button button-secondary"
+                  onClick={loadHistory}
                 >
-                  <i className={`fa-solid ${enviando ? "fa-circle-notch fa-spin" : "fa-paper-plane"}`}></i>
-                  <span>{enviando ? "Enviando y actualizando estado..." : "Enviar Correos con IA"}</span>
+                  <i className="fa-solid fa-rotate" />
+                  Actualizar historial
+                </button>
+              </div>
+
+              {history.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">
+                    <i className="fa-solid fa-clock-rotate-left" />
+                  </div>
+                  <h4>Sin búsquedas registradas</h4>
+                  <p>
+                    Cuando ejecutes una búsqueda, aparecerá aquí su estado
+                    y cantidad de resultados.
+                  </p>
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Ciudad</th>
+                        <th>Rubro</th>
+                        <th>Estado</th>
+                        <th>Encontrados</th>
+                        <th>Guardados</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {history.map((item) => (
+                        <tr key={item.id}>
+                          <td>{formatDate(item.startedAt)}</td>
+                          <td>{item.city || "—"}</td>
+                          <td>{item.category || "—"}</td>
+                          <td>
+                            <span
+                              className={`status status-${String(
+                                item.status || ""
+                              ).toLowerCase()}`}
+                            >
+                              {item.status || "—"}
+                            </span>
+                          </td>
+                          <td>{item.foundCount ?? 0}</td>
+                          <td>{item.savedCount ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <footer className="page-footer">
+          <span>RepuSense · Panel de prospección</span>
+          <span>
+            Los análisis guardados se recuperan desde el backend.
+            La evaluación de reputación depende de los datos disponibles.
+          </span>
+        </footer>
+      </main>
+
+      {selectedLead && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setSelectedLead(null)}
+          role="presentation"
+        >
+          <section
+            className="analysis-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="analysis-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow">ANÁLISIS DE REPUTACIÓN</span>
+                <h3 id="analysis-title">{selectedLead.displayName}</h3>
+              </div>
+
+              <button
+                className="icon-button close-button"
+                onClick={() => setSelectedLead(null)}
+                aria-label="Cerrar"
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+
+            {selectedLead.analysis ? (
+              <div className="analysis-content">
+                <p className="analysis-label">
+                  <i className="fa-solid fa-wand-magic-sparkles" />
+                  Resultado de Gemini
+                </p>
+                <p className="analysis-text">{selectedLead.analysis}</p>
+              </div>
+            ) : (
+              <div className="empty-state modal-empty">
+                <i className="fa-solid fa-file-circle-question" />
+                <h4>Todavía no hay un análisis</h4>
+                <p>
+                  Seleccioná Analizar con Gemini para generar un análisis
+                  con la información disponible del comercio.
+                </p>
+
+                <button
+                  className="button button-primary"
+                  onClick={() => {
+                    const lead = selectedLead;
+                    setSelectedLead(null);
+                    analyzeLead(lead);
+                  }}
+                  disabled={analyzingId === selectedLead.id}
+                >
+                  <i className="fa-solid fa-brain" />
+                  Analizar con Gemini
                 </button>
               </div>
             )}
-          </div>
-        )}
-      </main>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
