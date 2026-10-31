@@ -38,6 +38,8 @@ public class BusinessService {
         business.setReviewCount(businessDetails.getReviewCount());
         business.setPhone(businessDetails.getPhone());
         business.setWebsite(businessDetails.getWebsite());
+        
+
 
         return businessRepository.save(business);
     }

@@ -1,3 +1,4 @@
+
 package com.repusense.backend.model;
 
 import jakarta.persistence.*;
@@ -19,7 +20,7 @@ public class Business {
     private Long id;
 
     @Column(nullable = false, length = 50)
-    private String source; // ej. 'GOOGLE_MAPS'
+    private String source;
 
     @Column(name = "source_business_id", nullable = false)
     private String sourceBusinessId;
@@ -41,6 +42,9 @@ public class Business {
     private String phone;
 
     private String website;
+
+    @Column(length = 500)
+    private String address;
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;

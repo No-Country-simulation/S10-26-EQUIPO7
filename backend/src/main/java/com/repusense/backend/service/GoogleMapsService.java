@@ -5,13 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repusense.backend.model.Business;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,13 +19,12 @@ import java.util.Set;
 public class GoogleMapsService {
 
     private static final String API_URL =
-            "https://api.fetchlayer.dev/google-maps/place-search";
+            "https://serpapi.com/search.json";
 
-    private static final int MAX_RESULTS = 200;
-    private static final int MAX_PAGES = 20;
-    private static final int PAGE_SIZE = 10;
-    private static final double MIN_RATING = 1.5;
-    private static final double MAX_RATING = 3.5;
+    private static final int MAX_RESULTS = 20;
+
+    private static final double MIN_RATING = 1.0;
+    private static final double MAX_RATING = 4.5;
     private static final int MIN_REVIEWS = 10;
 
     private final RestTemplate restTemplate;
@@ -36,7 +32,7 @@ public class GoogleMapsService {
     private final String apiKey;
 
     public GoogleMapsService(
-            @Value("${fetchlayer.api.key:}") String apiKey) {
+            @Value("${serpapi.api.key:}") String apiKey) {
 
         this.apiKey = apiKey;
 
@@ -54,16 +50,18 @@ public class GoogleMapsService {
             String city, String category) {
 
         if (city == null || city.isBlank()) {
-            throw new IllegalArgumentException("Ingresá una ciudad.");
+            throw new IllegalArgumentException(
+                    "Ingresá una ciudad.");
         }
 
         if (category == null || category.isBlank()) {
-            throw new IllegalArgumentException("Ingresá un rubro.");
+            throw new IllegalArgumentException(
+                    "Ingresá un rubro.");
         }
 
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException(
-                    "Falta configurar FETCHLAYER_API_KEY.");
+                    "Falta configurar SERPAPI_API_KEY.");
         }
 
         String cleanCity = city.trim();
@@ -71,7 +69,6 @@ public class GoogleMapsService {
 
         List<Business> businesses = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        String cursor = null;
 
         int received = 0;
         int missingData = 0;
@@ -79,75 +76,97 @@ public class GoogleMapsService {
         int rejectedReviews = 0;
         int duplicates = 0;
 
+        // Consultas específicas para intentar encontrar
+        // comercios con problemas de reputación.
+        List<String> queries = List.of(
+                cleanCategory + " con malas reseñas en "
+                        + cleanCity + ", Argentina",
+                cleanCategory + " baja calificación en "
+                        + cleanCity + ", Argentina"
+        );
+
         try {
-            for (int page = 0;
-                 page < MAX_PAGES && businesses.size() < MAX_RESULTS;
-                 page++) {
+            for (String query : queries) {
 
-                var body = objectMapper.createObjectNode();
-                body.put("query", cleanCategory);
-                body.put("location", cleanCity + ", Argentina");
-                body.put("language", "es");
-                body.put("country", "AR");
-                body.put("limit", PAGE_SIZE);
-
-                if (cursor != null && !cursor.isBlank()) {
-                    body.put("cursor", cursor);
+                if (businesses.size() >= MAX_RESULTS) {
+                    break;
                 }
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.setBearerAuth(apiKey);
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                String url = UriComponentsBuilder
+                        .fromHttpUrl(API_URL)
+                        .queryParam("engine", "google_maps")
+                        .queryParam("type", "search")
+                        .queryParam("q", query)
+                        .queryParam("hl", "es")
+                        .queryParam("gl", "ar")
+                        .queryParam("api_key", apiKey)
+                        .build()
+                        .encode()
+                        .toUriString();
 
-                HttpEntity<String> request = new HttpEntity<>(
-                        objectMapper.writeValueAsString(body),
-                        headers
-                );
+                System.out.println(
+                        "[SerpApi] Consultando: " + query);
 
-                ResponseEntity<String> response = restTemplate.exchange(
-                        API_URL,
-                        HttpMethod.POST,
-                        request,
-                        String.class
-                );
+                var response = restTemplate.getForEntity(
+                        url, String.class);
 
-                JsonNode root = objectMapper.readTree(response.getBody());
-                JsonNode places = root.path("places");
+                JsonNode root = objectMapper.readTree(
+                        response.getBody());
 
-                System.out.println("[FetchLayer] Página: " + (page + 1));
-                System.out.println("[FetchLayer] HTTP: "
-                        + response.getStatusCode());
-                System.out.println("[FetchLayer] Campos recibidos: "
-                        + fieldNames(root));
+                System.out.println(
+                        "[SerpApi] HTTP: "
+                                + response.getStatusCode());
+
+                System.out.println(
+                        "[SerpApi] Campos recibidos: "
+                                + fieldNames(root));
+
+                if (root.has("error")) {
+                    throw new IllegalStateException(
+                            "SerpApi: "
+                                    + root.path("error").asText());
+                }
+
+                JsonNode places = root.path("local_results");
 
                 if (!places.isArray()) {
-                    System.out.println("[FetchLayer] Respuesta recibida: "
-                            + root);
-
                     throw new IllegalStateException(
-                            "FetchLayer no devolvió una lista en el campo "
-                                    + "'places'.");
+                            "SerpApi no devolvió resultados "
+                                    + "en local_results.");
                 }
 
-                System.out.println("[FetchLayer] Comercios recibidos: "
-                        + places.size());
+                System.out.println(
+                        "[SerpApi] Comercios recibidos: "
+                                + places.size());
 
                 received += places.size();
 
                 for (JsonNode place : places) {
+
                     if (businesses.size() >= MAX_RESULTS) {
                         break;
                     }
 
                     String placeId =
-                            place.path("placeId").asText("").trim();
+                            place.path("place_id")
+                                    .asText("").trim();
+
+                    if (placeId.isBlank()) {
+                        placeId = place.path("data_id")
+                                .asText("").trim();
+                    }
+
+                    if (placeId.isBlank()) {
+                        placeId = place.path("data_cid")
+                                .asText("").trim();
+                    }
 
                     String name =
-                            place.path("name").asText("").trim();
+                            place.path("title")
+                                    .asText("").trim();
 
                     JsonNode ratingNode = place.path("rating");
-                    JsonNode reviewsNode = place.path("reviewCount");
+                    JsonNode reviewsNode = place.path("reviews");
 
                     if (placeId.isBlank()
                             || name.isBlank()
@@ -156,14 +175,6 @@ public class GoogleMapsService {
                             || !reviewsNode.canConvertToInt()) {
 
                         missingData++;
-
-                        System.out.println(
-                                "[FetchLayer] Comercio descartado: "
-                                        + name
-                                        + " | Faltan identificador, nombre, "
-                                        + "calificación o cantidad de reseñas."
-                        );
-
                         continue;
                     }
 
@@ -171,17 +182,18 @@ public class GoogleMapsService {
                     int reviewCount = reviewsNode.asInt();
 
                     System.out.println(
-                            "[FetchLayer] Comercio: " + name
+                            "[SerpApi] Comercio: " + name
                                     + " | Calificación: " + rating
-                                    + " | Reseñas: " + reviewCount
-                    );
+                                    + " | Reseñas: " + reviewCount);
 
-                    if (rating < 0 || rating > 5 || reviewCount < 0) {
+                    if (rating < 0 || rating > 5
+                            || reviewCount < 0) {
                         missingData++;
                         continue;
                     }
 
-                    if (rating < MIN_RATING || rating >= MAX_RATING) {
+                    if (rating < MIN_RATING
+                            || rating >= MAX_RATING) {
                         rejectedRating++;
                         continue;
                     }
@@ -197,56 +209,72 @@ public class GoogleMapsService {
                     }
 
                     Business business = Business.builder()
-                            .source("FETCHLAYER_GOOGLE_MAPS")
+                            .source("SERPAPI_GOOGLE_MAPS")
                             .sourceBusinessId(placeId)
                             .name(name)
                             .city(cleanCity)
                             .category(cleanCategory)
-                            .address(place.path("address").asText(""))
-                            .phone(place.path("phone").asText(""))
-                            .website(place.path("website").asText(""))
+                            .address(place.path("address")
+                                    .asText(""))
+                            .phone(place.path("phone")
+                                    .asText(""))
+                            .website(place.path("website")
+                                    .asText(""))
                             .rating(rating)
                             .reviewCount(reviewCount)
                             .build();
 
                     businesses.add(business);
                 }
-
-                cursor = root.path("nextCursor").asText("");
-
-                if (cursor.isBlank()) {
-                    System.out.println(
-                            "[FetchLayer] No hay más páginas disponibles.");
-                    break;
-                }
             }
 
-            System.out.println("[FetchLayer] RESUMEN");
-            System.out.println("[FetchLayer] Recibidos: " + received);
-            System.out.println("[FetchLayer] Sin datos necesarios: "
-                    + missingData);
-            System.out.println("[FetchLayer] Descartados por calificación: "
-                    + rejectedRating);
-            System.out.println("[FetchLayer] Descartados por reseñas: "
-                    + rejectedReviews);
-            System.out.println("[FetchLayer] Duplicados: " + duplicates);
-            System.out.println("[FetchLayer] Leads potenciales encontrados: "
-                    + businesses.size());
+            System.out.println("[SerpApi] RESUMEN");
+            System.out.println(
+                    "[SerpApi] Recibidos: " + received);
+            System.out.println(
+                    "[SerpApi] Sin datos necesarios: "
+                            + missingData);
+            System.out.println(
+                    "[SerpApi] Descartados por calificación: "
+                            + rejectedRating);
+            System.out.println(
+                    "[SerpApi] Descartados por reseñas: "
+                            + rejectedReviews);
+            System.out.println(
+                    "[SerpApi] Duplicados: " + duplicates);
+            System.out.println(
+                    "[SerpApi] Leads potenciales encontrados: "
+                            + businesses.size());
 
             return businesses;
 
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw e;
-        } catch (Exception e) {
+        } catch (HttpStatusCodeException e) {
+
             throw new IllegalStateException(
-                    "Error al buscar comercios en FetchLayer: "
+                    "Error HTTP de SerpApi: "
+                            + e.getStatusCode()
+                            + " - "
+                            + e.getResponseBodyAsString(), e);
+
+        } catch (IllegalArgumentException
+                 | IllegalStateException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new IllegalStateException(
+                    "Error al buscar comercios en SerpApi: "
                             + e.getMessage(), e);
         }
     }
 
     private String fieldNames(JsonNode node) {
+
         List<String> names = new ArrayList<>();
+
         node.fieldNames().forEachRemaining(names::add);
+
         return names.toString();
     }
 }
