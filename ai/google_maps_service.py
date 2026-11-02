@@ -1,77 +1,43 @@
 
-import os
-import requests
-from dotenv import load_dotenv
+"""
+REPUSENSE - GOOGLE MAPS SERVICE
 
-load_dotenv()
+Compatibilidad con scripts antiguos.
 
-GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+La búsqueda actual de comercios se realiza desde Spring Boot
+mediante SerpApi.
 
-PLACES_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+Este módulo ya no consulta Google Places API directamente.
+
+Se conserva search_businesses_in_maps() para evitar errores
+de importación en scripts antiguos mientras se migra el proyecto.
+
+No realiza solicitudes externas ni modifica PostgreSQL.
+"""
 
 
 def search_businesses_in_maps(rubro="Pizzería", ciudad="La Plata"):
-    if not GOOGLE_PLACES_API_KEY:
-        print("ERROR: falta GOOGLE_PLACES_API_KEY en el archivo .env")
-        return []
+    """
+    Función obsoleta.
 
-    query = f"{rubro} en {ciudad}"
-    params = {
-        "query": query,
-        "key": GOOGLE_PLACES_API_KEY,
-        "language": "es",
-        "region": "ar"
-    }
+    La búsqueda real debe ejecutarse desde el backend Spring Boot,
+    que utiliza SerpApi y guarda los resultados en PostgreSQL.
+    """
 
-    print(f"Buscando comercios en Google Places: {query}")
+    print("=" * 60)
+    print("REPUSENSE - BÚSQUEDA DE COMERCIOS")
+    print("=" * 60)
 
-    try:
-        response = requests.get(
-            PLACES_URL,
-            params=params,
-            timeout=20
-        )
-        response.raise_for_status()
-        data = response.json()
+    print(f"Rubro: {rubro}")
+    print(f"Ciudad: {ciudad}")
 
-        status = data.get("status")
+    print(
+        "\nEsta función de Python está desactivada."
+        "\nLa búsqueda actual se realiza desde Spring Boot mediante SerpApi."
+    )
 
-        if status != "OK":
-            print(f"Google Places devolvió: {status}")
-            if data.get("error_message"):
-                print(data["error_message"])
-            return []
-
-        businesses = []
-
-        for place in data.get("results", []):
-            businesses.append({
-                "source": "GOOGLE_MAPS",
-                "sourceBusinessId": place.get("place_id"),
-                "name": place.get("name"),
-                "category": rubro.strip().capitalize(),
-                "city": ciudad.strip(),
-                "address": place.get("formatted_address"),
-                "rating": place.get("rating", 0.0),
-                "reviewCount": place.get("user_ratings_total", 0),
-                "phone": None,
-                "website": None
-            })
-
-        print(f"Se encontraron {len(businesses)} comercios.")
-        return businesses
-
-    except requests.RequestException as error:
-        print(f"Error consultando Google Places: {error}")
-        return []
+    return []
 
 
 if __name__ == "__main__":
-    resultados = search_businesses_in_maps("Farmacia", "La Plata")
-
-    for comercio in resultados[:5]:
-        print(
-            f"- {comercio['name']} | "
-            f"{comercio['rating']} estrellas | "
-            f"{comercio['address']}"
-        )
+    search_businesses_in_maps("Farmacia", "La Plata")

@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./App.css";
@@ -22,6 +23,19 @@ function getLeads(response) {
   if (Array.isArray(data?.data)) return data.data;
 
   return [];
+}
+
+function getErrorMessage(err) {
+  const data = err.response?.data;
+
+  if (typeof data === "string") return data;
+
+  return (
+    data?.error ||
+    data?.message ||
+    err.message ||
+    "Ocurrió un error inesperado."
+  );
 }
 
 function businessOf(lead) {
@@ -49,15 +63,48 @@ function problemFromAnalysis(analysis = "") {
   return "Sin clasificar";
 }
 
-function riskFromAnalysis(analysis = "") {
-  const text = analysis.toLowerCase();
+// El riesgo se obtiene exclusivamente de campos estructurados del backend.
+// No se deduce buscando palabras dentro del informe de Gemini.
+function riskFromLead(lead) {
+  const business = businessOf(lead);
 
-  if (/crítico|critico|muy negativo|grave|urgente/.test(text)) return 5;
-  if (/alto|negativo|mala experiencia|recurrente/.test(text)) return 4;
-  if (/moderado|regular|mejorar/.test(text)) return 3;
-  if (/positivo|buena experiencia|satisfacción|satisfaccion/.test(text)) return 1;
+  const value =
+    lead?.riskScore ??
+    lead?.riskLevel ??
+    lead?.risk ??
+    business?.riskScore ??
+    business?.riskLevel ??
+    business?.risk;
 
-  return null;
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numeric = Number(value);
+
+  if (Number.isFinite(numeric) && numeric >= 1 && numeric <= 5) {
+    return Math.round(numeric);
+  }
+
+  const normalized = String(value).trim().toUpperCase();
+
+  const levels = {
+    CRITICAL: 5,
+    CRITICO: 5,
+    CRÍTICO: 5,
+    HIGH: 4,
+    ALTO: 4,
+    MEDIUM: 3,
+    MODERADO: 3,
+    MEDIO: 3,
+    LOW: 2,
+    BAJO: 2,
+    MINIMAL: 1,
+    MINIMO: 1,
+    MÍNIMO: 1,
+  };
+
+  return levels[normalized] ?? null;
 }
 
 function formatDate(value) {
@@ -206,13 +253,16 @@ export default function App() {
 
       setConnection("connected");
       setError("");
+
+      return loadedLeads;
     } catch (err) {
       setConnection("disconnected");
       setError(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
+        getErrorMessage(err) ||
           "No se pudo consultar el backend. Verificá que Spring Boot esté iniciado en el puerto 8080."
       );
+
+      return null;
     } finally {
       setLoadingLeads(false);
     }
@@ -220,13 +270,20 @@ export default function App() {
 
   const loadHistory = useCallback(async () => {
     try {
-      const response = await axios.get(SEARCH_API, { timeout: 20000 });
+      const response = await axios.get(SEARCH_API, {
+        timeout: 20000,
+      });
 
-      setHistory(
-        Array.isArray(response.data) ? [...response.data].reverse() : []
-      );
+      const loadedHistory = Array.isArray(response.data)
+        ? [...response.data].reverse()
+        : [];
+
+      setHistory(loadedHistory);
+
+      return loadedHistory;
     } catch {
       setHistory([]);
+      return null;
     }
   }, []);
 
@@ -254,10 +311,11 @@ export default function App() {
           reviewCount: validReviewCount(business.reviewCount),
           statusLabel: leadStatus(lead.status),
           analysis,
+          hasReviews: lead.hasReviews,
           problem: analysis
             ? problemFromAnalysis(analysis)
             : "Pendiente de análisis",
-          risk: analysis ? riskFromAnalysis(analysis) : null,
+          risk: riskFromLead(lead),
         };
       }),
     [leads, analysisById]
@@ -334,28 +392,31 @@ export default function App() {
 
       const result = response.data || {};
 
-      setNotice(
-        `Búsqueda ${result.status || "completada"}: ${
-          result.foundCount ?? 0
-        } comercios encontrados y ${
-          result.savedCount ?? 0
-        } procesados/guardados.`
-      );
+      const [updatedLeads] = await Promise.all([
+        loadLeads(),
+        loadHistory(),
+      ]);
 
-      await Promise.all([loadLeads(), loadHistory()]);
       setActiveTab("leads");
-    } catch (err) {
-      const data = err.response?.data;
-      const message =
-        typeof data === "string"
-          ? data
-          : data?.error || data?.message || err.message;
 
-      setError(
-        `La búsqueda no se pudo completar. ${
-          message || "Revisá el backend y la fuente de comercios."
-        }`
-      );
+      if (updatedLeads === null) {
+        setNotice(
+          `La búsqueda finalizó con estado ${
+            result.status || "desconocido"
+          }, pero no se pudieron actualizar los leads del panel.`
+        );
+      } else {
+        setNotice(
+          `Búsqueda ${result.status || "finalizada"}. ` +
+            `Comercios encontrados: ${result.foundCount ?? 0}. ` +
+            `Registros procesados: ${result.savedCount ?? 0}. ` +
+            `Leads cargados en el panel: ${updatedLeads.length}.`
+        );
+      }
+    } catch (err) {
+      const message = getErrorMessage(err);
+
+      setError(`No se pudo completar la búsqueda. ${message}`);
 
       await loadHistory();
     } finally {
@@ -376,10 +437,28 @@ export default function App() {
       );
 
       const analysis = response.data?.analysis;
+      const hasReviews = response.data?.hasReviews === true;
 
       if (typeof analysis !== "string" || !analysis.trim()) {
         throw new Error("El backend no devolvió un análisis válido.");
       }
+
+      const updatedLead = {
+        ...lead,
+        aiAnalysis: analysis,
+        analysis,
+        hasReviews,
+        riskScore:
+          response.data?.riskScore ??
+          response.data?.riskLevel ??
+          lead.riskScore ??
+          lead.riskLevel ??
+          null,
+        status:
+          String(lead.status || "").toUpperCase() === "CONTACTED"
+            ? "CONTACTED"
+            : "ANALYZED",
+      };
 
       setAnalysisById((previous) => ({
         ...previous,
@@ -392,34 +471,30 @@ export default function App() {
             ? {
                 ...item,
                 aiAnalysis: analysis,
-                status:
-                  String(item.status || "").toUpperCase() === "CONTACTED"
-                    ? "CONTACTED"
-                    : "ANALYZED",
+                hasReviews,
+                riskScore: updatedLead.riskScore,
+                status: updatedLead.status,
               }
             : item
         )
       );
 
       setSelectedLead({
-        ...lead,
-        aiAnalysis: analysis,
-        analysis,
-        status:
-          String(lead.status || "").toUpperCase() === "CONTACTED"
-            ? "CONTACTED"
-            : "ANALYZED",
+        ...updatedLead,
+        displayName: lead.displayName || businessOf(lead).name || `Comercio #${lead.id}`,
       });
 
-      setNotice(`Análisis generado y guardado para ${lead.displayName}.`);
+      setNotice(
+        `Análisis generado con Gemini y guardado para ${
+          lead.displayName || `el comercio #${lead.id}`
+        }.`
+      );
     } catch (err) {
-      const data = err.response?.data;
-      const message =
-        typeof data === "string"
-          ? data
-          : data?.error || data?.message || err.message;
+      const message = getErrorMessage(err);
 
-      setError(`No se pudo analizar ${lead.displayName}. ${message}`);
+      setError(
+        `No se pudo analizar ${lead.displayName || `el comercio #${lead.id}`}. ${message}`
+      );
     } finally {
       setAnalyzingId(null);
     }
@@ -436,8 +511,16 @@ export default function App() {
 
       setLeads((previous) =>
         previous.map((item) =>
-          item.id === lead.id ? { ...item, status: "CONTACTED" } : item
+          item.id === lead.id
+            ? { ...item, status: "CONTACTED" }
+            : item
         )
+      );
+
+      setSelectedLead((previous) =>
+        previous?.id === lead.id
+          ? { ...previous, status: "CONTACTED" }
+          : previous
       );
 
       setNotice(
@@ -445,11 +528,7 @@ export default function App() {
       );
     } catch (err) {
       setError(
-        `No se pudo actualizar el estado del lead: ${
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          err.message
-        }`
+        `No se pudo actualizar el estado del lead: ${getErrorMessage(err)}`
       );
     }
   };
@@ -459,6 +538,7 @@ export default function App() {
       ...lead,
       analysis:
         analysisById[lead.id] || lead.aiAnalysis || lead.analysis || "",
+      hasReviews: lead.hasReviews,
     });
   };
 
@@ -490,11 +570,7 @@ export default function App() {
       setNotice("El archivo CSV se descargó correctamente.");
     } catch (err) {
       setError(
-        `No se pudo exportar el CSV. ${
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          err.message
-        }`
+        `No se pudo exportar el CSV. ${getErrorMessage(err)}`
       );
     } finally {
       setExporting(false);
@@ -628,7 +704,7 @@ export default function App() {
                 <h3>Buscar comercios</h3>
                 <p>
                   La búsqueda se ejecuta en el backend y guarda los
-                  resultados válidos en la base de datos.
+                  resultados válidos en PostgreSQL.
                 </p>
               </div>
             </div>
@@ -682,8 +758,9 @@ export default function App() {
 
           <p className="help-text">
             <i className="fa-solid fa-circle-info" />
-            Las calificaciones y reseñas se muestran solo cuando la fuente
-            las proporciona. La búsqueda actual utiliza OpenStreetMap.
+            La búsqueda utiliza SerpApi para consultar comercios de Google
+            Maps. Las calificaciones y reseñas se muestran cuando la fuente
+            proporciona esos datos.
           </p>
         </section>
 
@@ -754,9 +831,7 @@ export default function App() {
                   >
                     <i
                       className={`fa-solid ${
-                        exporting
-                          ? "fa-spinner fa-spin"
-                          : "fa-file-csv"
+                        exporting ? "fa-spinner fa-spin" : "fa-file-csv"
                       }`}
                     />
                     {exporting ? "Exportando..." : "Exportar CSV"}
@@ -832,7 +907,7 @@ export default function App() {
                           </td>
 
                           <td>
-                            {item.risk ? (
+                            {item.risk !== null ? (
                               <span className={`risk risk-${item.risk}`}>
                                 {item.risk}/5
                               </span>
@@ -988,7 +1063,11 @@ export default function App() {
             <div className="modal-header">
               <div>
                 <span className="eyebrow">ANÁLISIS DE REPUTACIÓN</span>
-                <h3 id="analysis-title">{selectedLead.displayName}</h3>
+                <h3 id="analysis-title">
+                  {selectedLead.displayName ||
+                    businessOf(selectedLead).name ||
+                    `Comercio #${selectedLead.id}`}
+                </h3>
               </div>
 
               <button
@@ -1004,8 +1083,20 @@ export default function App() {
               <div className="analysis-content">
                 <p className="analysis-label">
                   <i className="fa-solid fa-wand-magic-sparkles" />
-                  Resultado de Gemini
+                  Resultado del análisis con Gemini
                 </p>
+
+                <div className="notice notice-info">
+                  <i className="fa-solid fa-circle-info" />
+                  <span>
+                    {selectedLead.hasReviews === true
+                      ? "Análisis con reseñas reales disponibles."
+                      : selectedLead.hasReviews === false
+                        ? "Análisis sin reseñas reales. El resultado se basa en la información disponible del comercio."
+                        : "No se informó si el análisis utilizó reseñas reales."}
+                  </span>
+                </div>
+
                 <p className="analysis-text">{selectedLead.analysis}</p>
               </div>
             ) : (
@@ -1019,11 +1110,7 @@ export default function App() {
 
                 <button
                   className="button button-primary"
-                  onClick={() => {
-                    const lead = selectedLead;
-                    setSelectedLead(null);
-                    analyzeLead(lead);
-                  }}
+                  onClick={() => analyzeLead(selectedLead)}
                   disabled={analyzingId === selectedLead.id}
                 >
                   <i className="fa-solid fa-brain" />
