@@ -4,9 +4,13 @@ package com.repusense.backend.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repusense.backend.model.Business;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -17,6 +21,9 @@ import java.util.Set;
 
 @Service
 public class GoogleMapsService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(GoogleMapsService.class);
 
     private static final String API_URL =
             "https://serpapi.com/search.json";
@@ -76,13 +83,8 @@ public class GoogleMapsService {
         int rejectedReviews = 0;
         int duplicates = 0;
 
-        // Consultas específicas para intentar encontrar
-        // comercios con problemas de reputación.
         List<String> queries = List.of(
-                cleanCategory + " con malas reseñas en "
-                        + cleanCity + ", Argentina",
-                cleanCategory + " baja calificación en "
-                        + cleanCity + ", Argentina"
+                cleanCategory + " en " + cleanCity + ", Argentina"
         );
 
         try {
@@ -92,8 +94,8 @@ public class GoogleMapsService {
                     break;
                 }
 
-                String url = UriComponentsBuilder
-                        .fromHttpUrl(API_URL)
+                var uri = UriComponentsBuilder
+                        .fromUriString(API_URL)
                         .queryParam("engine", "google_maps")
                         .queryParam("type", "search")
                         .queryParam("q", query)
@@ -102,42 +104,45 @@ public class GoogleMapsService {
                         .queryParam("api_key", apiKey)
                         .build()
                         .encode()
-                        .toUriString();
+                        .toUri();
 
-                System.out.println(
-                        "[SerpApi] Consultando: " + query);
+                log.info("[SerpApi] Iniciando búsqueda de rubro: {}",
+                        cleanCategory);
 
                 var response = restTemplate.getForEntity(
-                        url, String.class);
+                        uri, String.class);
+
+                if (response.getBody() == null
+                        || response.getBody().isBlank()) {
+                    throw new IllegalStateException(
+                            "SerpApi devolvió una respuesta vacía.");
+                }
 
                 JsonNode root = objectMapper.readTree(
                         response.getBody());
 
-                System.out.println(
-                        "[SerpApi] HTTP: "
-                                + response.getStatusCode());
-
-                System.out.println(
-                        "[SerpApi] Campos recibidos: "
-                                + fieldNames(root));
+                if (root == null || !root.isObject()) {
+                    throw new IllegalStateException(
+                            "SerpApi devolvió una respuesta inválida.");
+                }
 
                 if (root.has("error")) {
                     throw new IllegalStateException(
-                            "SerpApi: "
-                                    + root.path("error").asText());
+                            "SerpApi no pudo completar la búsqueda.");
                 }
 
                 JsonNode places = root.path("local_results");
 
                 if (!places.isArray()) {
                     throw new IllegalStateException(
-                            "SerpApi no devolvió resultados "
-                                    + "en local_results.");
+                            "La respuesta de SerpApi no contiene resultados válidos.");
                 }
 
-                System.out.println(
-                        "[SerpApi] Comercios recibidos: "
-                                + places.size());
+                log.info("[SerpApi] HTTP: {}",
+                        response.getStatusCode());
+
+                log.info("[SerpApi] Comercios recibidos: {}",
+                        places.size());
 
                 received += places.size();
 
@@ -147,64 +152,68 @@ public class GoogleMapsService {
                         break;
                     }
 
-                    String placeId =
-                            place.path("place_id")
-                                    .asText("").trim();
+                    String name = place.path("title")
+                            .asText("")
+                            .trim();
 
-                    if (placeId.isBlank()) {
-                        placeId = place.path("data_id")
-                                .asText("").trim();
-                    }
+                    String placeId = firstText(
+                            place,
+                            "place_id",
+                            "data_id",
+                            "data_cid"
+                    );
 
-                    if (placeId.isBlank()) {
-                        placeId = place.path("data_cid")
-                                .asText("").trim();
-                    }
-
-                    String name =
-                            place.path("title")
-                                    .asText("").trim();
-
-                    JsonNode ratingNode = place.path("rating");
-                    JsonNode reviewsNode = place.path("reviews");
-
-                    if (placeId.isBlank()
-                            || name.isBlank()
-                            || !ratingNode.isNumber()
-                            || !reviewsNode.isIntegralNumber()
-                            || !reviewsNode.canConvertToInt()) {
-
+                    if (name.isBlank()) {
                         missingData++;
                         continue;
                     }
 
-                    double rating = ratingNode.asDouble();
-                    int reviewCount = reviewsNode.asInt();
-
-                    System.out.println(
-                            "[SerpApi] Comercio: " + name
-                                    + " | Calificación: " + rating
-                                    + " | Reseñas: " + reviewCount);
-
-                    if (rating < 0 || rating > 5
-                            || reviewCount < 0) {
-                        missingData++;
-                        continue;
-                    }
-
-                    if (rating < MIN_RATING
-                            || rating >= MAX_RATING) {
-                        rejectedRating++;
-                        continue;
-                    }
-
-                    if (reviewCount <= MIN_REVIEWS) {
-                        rejectedReviews++;
-                        continue;
+                    if (placeId.isBlank()) {
+                        placeId = "SERPAPI_"
+                                + normalize(name)
+                                + "_"
+                                + normalize(cleanCity);
                     }
 
                     if (!seen.add(placeId)) {
                         duplicates++;
+                        continue;
+                    }
+
+                    Double rating = readDouble(
+                            place.path("rating"));
+
+                    Integer reviewCount = readInteger(
+                            place.path("reviews"));
+
+                    double finalRating =
+                            rating != null ? rating : 0.0;
+
+                    int finalReviewCount =
+                            reviewCount != null ? reviewCount : 0;
+
+                    if (rating != null
+                            && (rating < 0 || rating > 5)) {
+                        rejectedRating++;
+                        continue;
+                    }
+
+                    if (rating != null
+                            && (rating < MIN_RATING
+                            || rating >= MAX_RATING)) {
+                        rejectedRating++;
+                        continue;
+                    }
+
+                    if (reviewCount != null
+                            && reviewCount < 0) {
+                        missingData++;
+                        continue;
+                    }
+
+                    if (reviewCount != null
+                            && reviewCount <= MIN_REVIEWS) {
+                        rejectedReviews++;
                         continue;
                     }
 
@@ -214,67 +223,155 @@ public class GoogleMapsService {
                             .name(name)
                             .city(cleanCity)
                             .category(cleanCategory)
-                            .address(place.path("address")
-                                    .asText(""))
-                            .phone(place.path("phone")
-                                    .asText(""))
-                            .website(place.path("website")
-                                    .asText(""))
-                            .rating(rating)
-                            .reviewCount(reviewCount)
+                            .address(place.path("address").asText(""))
+                            .phone(place.path("phone").asText(""))
+                            .website(place.path("website").asText(""))
+                            .rating(finalRating)
+                            .reviewCount(finalReviewCount)
                             .build();
 
                     businesses.add(business);
+
+                    log.debug(
+                            "[SerpApi] Comercio válido: {} | Calificación: {} | Reseñas: {}",
+                            name,
+                            finalRating,
+                            finalReviewCount
+                    );
                 }
             }
 
-            System.out.println("[SerpApi] RESUMEN");
-            System.out.println(
-                    "[SerpApi] Recibidos: " + received);
-            System.out.println(
-                    "[SerpApi] Sin datos necesarios: "
-                            + missingData);
-            System.out.println(
-                    "[SerpApi] Descartados por calificación: "
-                            + rejectedRating);
-            System.out.println(
-                    "[SerpApi] Descartados por reseñas: "
-                            + rejectedReviews);
-            System.out.println(
-                    "[SerpApi] Duplicados: " + duplicates);
-            System.out.println(
-                    "[SerpApi] Leads potenciales encontrados: "
-                            + businesses.size());
+            log.info("[SerpApi] RESUMEN DE BÚSQUEDA");
+            log.info("[SerpApi] Recibidos: {}", received);
+            log.info("[SerpApi] Sin datos necesarios: {}", missingData);
+            log.info("[SerpApi] Descartados por calificación: {}",
+                    rejectedRating);
+            log.info("[SerpApi] Descartados por reseñas: {}",
+                    rejectedReviews);
+            log.info("[SerpApi] Duplicados: {}", duplicates);
+            log.info("[SerpApi] Comercios encontrados: {}",
+                    businesses.size());
 
             return businesses;
 
         } catch (HttpStatusCodeException e) {
 
-            throw new IllegalStateException(
-                    "Error HTTP de SerpApi: "
-                            + e.getStatusCode()
-                            + " - "
-                            + e.getResponseBodyAsString(), e);
+            log.error("[SerpApi] Error HTTP: {}",
+                    e.getStatusCode());
 
-        } catch (IllegalArgumentException
-                 | IllegalStateException e) {
+            throw new IllegalStateException(
+                    "SerpApi devolvió un error HTTP: "
+                            + e.getStatusCode().value()
+                            + ". Verificá el servicio y la configuración."
+            );
+
+        } catch (ResourceAccessException e) {
+
+            log.error("[SerpApi] Error de conexión o tiempo de espera.");
+
+            throw new IllegalStateException(
+                    "No se pudo conectar con SerpApi o se agotó el tiempo de espera."
+            );
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
 
             throw e;
 
-        } catch (Exception e) {
+        } catch (RestClientException e) {
+
+            log.error("[SerpApi] Error de comunicación con el servicio.");
 
             throw new IllegalStateException(
-                    "Error al buscar comercios en SerpApi: "
-                            + e.getMessage(), e);
+                    "No se pudo completar la comunicación con SerpApi."
+            );
+
+        } catch (Exception e) {
+
+            log.error(
+                    "[SerpApi] Error interno. Tipo: {}",
+                    e.getClass().getSimpleName()
+            );
+
+            throw new IllegalStateException(
+                    "Ocurrió un error al procesar la búsqueda de comercios."
+            );
         }
     }
 
-    private String fieldNames(JsonNode node) {
+    private String firstText(JsonNode node, String... fields) {
 
-        List<String> names = new ArrayList<>();
+        for (String field : fields) {
+            String value = node.path(field)
+                    .asText("")
+                    .trim();
 
-        node.fieldNames().forEachRemaining(names::add);
+            if (!value.isBlank()) {
+                return value;
+            }
+        }
 
-        return names.toString();
+        return "";
+    }
+
+    private Double readDouble(JsonNode node) {
+
+        if (node == null
+                || node.isMissingNode()
+                || node.isNull()
+                || node.isContainerNode()) {
+            return null;
+        }
+
+        if (node.isNumber()) {
+            return node.asDouble();
+        }
+
+        try {
+            String value = node.asText("")
+                    .trim()
+                    .replace(",", ".");
+
+            return value.isBlank()
+                    ? null
+                    : Double.parseDouble(value);
+
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer readInteger(JsonNode node) {
+
+        if (node == null
+                || node.isMissingNode()
+                || node.isNull()
+                || node.isContainerNode()) {
+            return null;
+        }
+
+        if (node.isIntegralNumber()
+                && node.canConvertToInt()) {
+            return node.asInt();
+        }
+
+        try {
+            String value = node.asText("").trim();
+
+            if (value.isBlank()) {
+                return null;
+            }
+
+            return Integer.parseInt(value);
+
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String normalize(String value) {
+
+        return value.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
     }
 }

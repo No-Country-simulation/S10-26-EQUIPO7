@@ -3,6 +3,8 @@ package com.repusense.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -19,11 +21,13 @@ public class Lead {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "El comercio asociado es obligatorio")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Business business;
 
+    @NotBlank(message = "El estado del lead es obligatorio")
     @Column(nullable = false, length = 50)
     @Builder.Default
     private String status = "NEW";
@@ -43,23 +47,22 @@ public class Lead {
     @Column(name = "ai_analysis", columnDefinition = "TEXT")
     private String aiAnalysis;
 
+    @Column(name = "risk_score")
+    private Integer riskScore;
+
+    @Column(name = "risk_reason", columnDefinition = "TEXT")
+    private String riskReason;
+
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
     @PrePersist
     public void prePersist() {
         OffsetDateTime now = OffsetDateTime.now();
+
         createdAt = now;
         updatedAt = now;
 

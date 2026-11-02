@@ -11,6 +11,7 @@ import com.repusense.backend.service.GoogleMapsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,13 +39,14 @@ public class SearchRunController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createSearch(@RequestBody SearchRun searchRun) {
-        if (searchRun.getCity() == null
-                || searchRun.getCity().isBlank()
-                || searchRun.getCategory() == null
-                || searchRun.getCategory().isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body("La ciudad y el rubro son obligatorios.");
+    public ResponseEntity<SearchRun> createSearch(@RequestBody SearchRun searchRun) {
+
+        if (searchRun == null) {
+            throw new IllegalArgumentException("Los datos de búsqueda son obligatorios");
+        }
+
+        if (!hasText(searchRun.getCity()) || !hasText(searchRun.getCategory())) {
+            throw new IllegalArgumentException("La ciudad y el rubro son obligatorios");
         }
 
         searchRun.setCity(searchRun.getCity().trim());
@@ -61,16 +63,19 @@ public class SearchRunController {
             List<Business> businesses =
                     googleMapsService.fetchBusinessesByCityAndCategory(
                             savedRun.getCity(),
-                            savedRun.getCategory());
+                            savedRun.getCategory()
+                    );
 
             if (businesses == null) {
                 throw new IllegalStateException(
-                        "La fuente de negocios no devolvió una respuesta válida.");
+                        "La fuente de negocios no devolvió una respuesta válida"
+                );
             }
 
             int savedCount = 0;
 
             for (Business incoming : businesses) {
+
                 if (!isValid(incoming)) {
                     continue;
                 }
@@ -80,7 +85,9 @@ public class SearchRunController {
 
                 Optional<Business> existing =
                         businessRepository.findBySourceAndSourceBusinessId(
-                                source, sourceId);
+                                source,
+                                sourceId
+                        );
 
                 Business business;
 
@@ -110,6 +117,7 @@ public class SearchRunController {
                     if (incoming.getReviewCount() != null) {
                         business.setReviewCount(incoming.getReviewCount());
                     }
+
                 } else {
                     business = incoming;
                     business.setSource(source);
@@ -136,13 +144,35 @@ public class SearchRunController {
             return ResponseEntity.ok(searchRunRepository.save(savedRun));
 
         } catch (Exception e) {
+
             savedRun.setStatus("FAILED");
             savedRun.setFinishedAt(OffsetDateTime.now());
             searchRunRepository.save(savedRun);
 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al ejecutar la búsqueda: " + e.getMessage());
+            throw new IllegalStateException(
+                    "No se pudo completar la búsqueda de comercios",
+                    e
+            );
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<List<SearchRun>> getAllSearches() {
+        return ResponseEntity.ok(searchRunRepository.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<SearchRun> getSearchStatus(@PathVariable Long id) {
+
+        validateId(id);
+
+        SearchRun searchRun = searchRunRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "No se encontró la búsqueda solicitada"
+                ));
+
+        return ResponseEntity.ok(searchRun);
     }
 
     private boolean isValid(Business business) {
@@ -158,15 +188,9 @@ public class SearchRunController {
         return value != null && !value.isBlank();
     }
 
-    @GetMapping
-    public ResponseEntity<List<SearchRun>> getAllSearches() {
-        return ResponseEntity.ok(searchRunRepository.findAll());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<SearchRun> getSearchStatus(@PathVariable Long id) {
-        return searchRunRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    private void validateId(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("El ID de búsqueda debe ser válido");
+        }
     }
 }
