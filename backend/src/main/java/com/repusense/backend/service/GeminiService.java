@@ -16,8 +16,10 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,13 +30,24 @@ public class GeminiService {
             LoggerFactory.getLogger(GeminiService.class);
 
     private static final Pattern RISK_PATTERN =
-            Pattern.compile("(?im)^RIESGO_SCORE\\s*:\\s*(1|2|3|4|5|SIN_EVALUAR)\\s*$");
+            Pattern.compile(
+                    "(?im)^\\s*RIESGO_SCORE\\s*:\\s*(SIN_EVALUAR|[1-5])\\b.*$"
+            );
 
     private static final Pattern REASON_PATTERN =
-            Pattern.compile("(?im)^RIESGO_MOTIVO\\s*:\\s*(.*)$");
+            Pattern.compile(
+                    "(?im)^\\s*RIESGO_MOTIVO\\s*:\\s*(.*?)\\s*$"
+            );
 
     private static final Pattern PROBLEM_PATTERN =
-            Pattern.compile("(?im)^PROBLEMA_PRINCIPAL\\s*:\\s*(.*)$");
+            Pattern.compile(
+                    "(?im)^\\s*PROBLEMA_PRINCIPAL\\s*:\\s*(.*?)\\s*$"
+            );
+
+    private static final Pattern SECTION_PATTERN =
+            Pattern.compile(
+                    "(?im)^\\s{0,3}#{0,3}\\s*(\\d+)\\.\\s+(.+?)\\s*$"
+            );
 
     @Value("${gemini.api.key}")
     private String apiKey;
@@ -81,73 +94,74 @@ public class GeminiService {
                 INFORMACIÓN DISPONIBLE:
                 %s
 
-                PREPARA UN INFORME CON ESTAS SECCIONES:
+                PREPARA UN INFORME CON ESTAS NUEVE SECCIONES.
+                Cada sección debe aparecer UNA SOLA VEZ y en este orden.
 
                 1. DIAGNÓSTICO GENERAL
-                Explica la situación de la reputación del comercio.
+                Describe brevemente la reputación del comercio.
 
                 2. SENTIMIENTO GENERAL
                 Clasifica el sentimiento como positivo, neutral o negativo
-                y justifica brevemente la clasificación.
+                y justifica brevemente.
 
                 3. FORTALEZAS
-                Identifica los aspectos positivos respaldados por
-                la información disponible.
+                Indica hasta tres aspectos positivos respaldados por datos.
 
                 4. PROBLEMAS RECURRENTES
-                Identifica las dificultades mencionadas en las reseñas.
-                No presentes un problema como recurrente si no hay
-                evidencia suficiente.
+                Identifica hasta tres problemas respaldados por reseñas.
+                No inventes problemas ni los presentes como recurrentes
+                sin evidencia suficiente.
 
                 5. OPORTUNIDADES DE MEJORA
-                Propone acciones concretas y realistas.
+                Propone hasta tres acciones concretas.
 
                 6. RECOMENDACIONES
-                Indica qué debería priorizar el comercio.
+                Indica hasta tres prioridades para el comercio.
 
                 7. RESPUESTAS A CLIENTES
-                Redacta dos respuestas profesionales y empáticas
-                para comentarios críticos. Si no hay reseñas críticas,
-                aclara que no hay material suficiente para responder
-                a comentarios concretos.
+                Redacta dos respuestas profesionales y empáticas,
+                de hasta 35 palabras cada una.
+                Si no hay textos de reseñas críticas, aclara que
+                no hay material suficiente para responder comentarios concretos.
 
                 8. PRIORIDAD COMERCIAL
-                Indica si la situación representa una oportunidad
-                de intervención baja, media o alta, y explica por qué.
+                Clasifica la oportunidad como baja, media o alta
+                y explica brevemente por qué.
 
                 9. CLASIFICACIÓN DE RIESGO
-                Asigna un único puntaje entero según la gravedad de
-                los problemas de reputación demostrados por los datos:
+                Asigna un único puntaje entero:
                 1 = Mínimo: reputación favorable o sin señales negativas.
                 2 = Bajo: señales negativas leves y aisladas.
-                3 = Medio: problemas moderados o varias señales negativas.
+                3 = Medio: problemas moderados respaldados por datos.
                 4 = Alto: problemas importantes respaldados por evidencia.
                 5 = Crítico: problemas graves y reiterados respaldados
                     por evidencia.
 
-                Si la información no permite evaluar razonablemente
-                el riesgo, utiliza SIN_EVALUAR. No inventes datos.
-                Si no hay textos de reseñas, puedes hacer una evaluación
-                preliminar con la calificación y cantidad de reseñas
-                únicamente si esos datos son suficientes. Aclara esa
-                limitación en el informe.
+                Si no hay información suficiente para evaluar el riesgo,
+                utiliza SIN_EVALUAR.
 
-                AL FINAL DEL INFORME, ESCRIBE OBLIGATORIAMENTE
-                ESTAS TRES LÍNEAS, RESPETANDO EXACTAMENTE EL FORMATO:
+                Si no hay textos de reseñas, puedes realizar una evaluación
+                preliminar usando la calificación y cantidad de reseñas,
+                únicamente si esos datos permiten una valoración razonable.
+                Aclara que se trata de una evaluación preliminar.
 
-                RIESGO_SCORE: 1, 2, 3, 4, 5 o SIN_EVALUAR
-                RIESGO_MOTIVO: explicación breve del puntaje
-                PROBLEMA_PRINCIPAL: problema principal o Sin evidencia suficiente
-
-                REGLAS IMPORTANTES:
+                REGLAS DE EXTENSIÓN:
+                - El informe completo no debe superar las 400 palabras.
+                - Cada sección debe ser breve y concreta.
+                - No repitas información ni títulos.
+                - No agregues introducciones ni conclusiones adicionales.
                 - No inventes reseñas, opiniones ni datos.
-                - Diferencia los datos del perfil de las opiniones
-                  expresadas en reseñas.
-                - No afirmes que un problema es recurrente sin evidencia.
-                - No confundas prioridad comercial con gravedad del riesgo.
-                - Respondé en español, con títulos y secciones claras.
-                - Las tres líneas finales deben aparecer separadas,
-                  sin formato Markdown y sin texto después de ellas.
+                - No atribuyas problemas específicos sin evidencia textual.
+                - Diferencia la prioridad comercial del riesgo reputacional.
+                - Respondé en español.
+
+                AL FINAL DEL INFORME ESCRIBE ESTAS TRES LÍNEAS:
+                RIESGO_SCORE: escribe solamente 1, 2, 3, 4, 5 o SIN_EVALUAR
+                RIESGO_MOTIVO: explicación breve del puntaje
+                PROBLEMA_PRINCIPAL: problema demostrado o Sin evidencia suficiente
+
+                Las tres líneas deben estar separadas.
+                No escribas nada después de PROBLEMA_PRINCIPAL.
                 """.formatted(
                 businessName == null ? "Sin nombre" : businessName,
                 reviewsText == null || reviewsText.isBlank()
@@ -159,8 +173,8 @@ public class GeminiService {
         Map<String, Object> content = Map.of("parts", List.of(part));
 
         Map<String, Object> generationConfig = Map.of(
-                "temperature", 0.3,
-                "maxOutputTokens", 2048
+                "temperature", 0.2,
+                "maxOutputTokens", 1200
         );
 
         Map<String, Object> requestBody = Map.of(
@@ -284,6 +298,7 @@ public class GeminiService {
     }
 
     private AnalysisResult parseAnalysis(String completeText) {
+
         Integer riskScore = null;
         String riskReason = null;
         String mainProblem = null;
@@ -312,20 +327,33 @@ public class GeminiService {
 
         String report = completeText
                 .replaceAll(
-                        "(?im)^RIESGO_SCORE\\s*:\\s*(1|2|3|4|5|SIN_EVALUAR)\\s*$",
+                        "(?im)^\\s*RIESGO_SCORE\\s*:\\s*.*$",
                         ""
                 )
-                .replaceAll("(?im)^RIESGO_MOTIVO\\s*:\\s*.*$", "")
-                .replaceAll("(?im)^PROBLEMA_PRINCIPAL\\s*:\\s*.*$", "")
+                .replaceAll(
+                        "(?im)^\\s*RIESGO_MOTIVO\\s*:\\s*.*$",
+                        ""
+                )
+                .replaceAll(
+                        "(?im)^\\s*PROBLEMA_PRINCIPAL\\s*:\\s*.*$",
+                        ""
+                )
                 .trim();
+
+        report = removeDuplicateSections(report);
 
         if (riskScore == null
                 && (riskReason == null || riskReason.isBlank())) {
-            riskReason = "Gemini no proporcionó evidencia suficiente para clasificar el riesgo.";
+            riskReason =
+                    "Gemini no proporcionó evidencia suficiente para clasificar el riesgo.";
         }
 
         if (mainProblem == null || mainProblem.isBlank()) {
             mainProblem = "Sin evidencia suficiente";
+        }
+
+        if (report.isBlank()) {
+            report = "Gemini no generó un informe válido.";
         }
 
         return new AnalysisResult(
@@ -336,7 +364,42 @@ public class GeminiService {
         );
     }
 
+    private String removeDuplicateSections(String report) {
+
+        String[] lines = report.split("\\R");
+        StringBuilder cleaned = new StringBuilder();
+
+        Set<String> seenSections = new HashSet<>();
+
+        boolean skippingDuplicate = false;
+
+        for (String line : lines) {
+
+            Matcher matcher = SECTION_PATTERN.matcher(line);
+
+            if (matcher.matches()) {
+
+                String sectionNumber = matcher.group(1);
+
+                if (seenSections.contains(sectionNumber)) {
+                    skippingDuplicate = true;
+                    continue;
+                }
+
+                seenSections.add(sectionNumber);
+                skippingDuplicate = false;
+            }
+
+            if (!skippingDuplicate) {
+                cleaned.append(line).append("\n");
+            }
+        }
+
+        return cleaned.toString().trim();
+    }
+
     private String cleanValue(String value) {
+
         if (value == null || value.isBlank()) {
             return null;
         }

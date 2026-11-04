@@ -1,13 +1,15 @@
 
 package com.repusense.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "search_run")
@@ -34,12 +36,12 @@ public class SearchRun {
     @Builder.Default
     private String status = "PENDING";
 
-    @PositiveOrZero(message = "La cantidad de negocios encontrados no puede ser negativa")
+    @PositiveOrZero
     @Column(name = "found_count")
     @Builder.Default
     private Integer foundCount = 0;
 
-    @PositiveOrZero(message = "La cantidad de negocios guardados no puede ser negativa")
+    @PositiveOrZero
     @Column(name = "saved_count")
     @Builder.Default
     private Integer savedCount = 0;
@@ -49,6 +51,19 @@ public class SearchRun {
 
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
+
+    @JsonIgnore
+    @ManyToMany
+    @JoinTable(
+            name = "search_run_business",
+            joinColumns = @JoinColumn(name = "search_run_id"),
+            inverseJoinColumns = @JoinColumn(name = "business_id"),
+            uniqueConstraints = @UniqueConstraint(
+                    columnNames = {"search_run_id", "business_id"}
+            )
+    )
+    @Builder.Default
+    private Set<Business> businesses = new LinkedHashSet<>();
 
     @PrePersist
     public void prePersist() {
@@ -66,6 +81,10 @@ public class SearchRun {
 
         if (this.savedCount == null) {
             this.savedCount = 0;
+        }
+
+        if (this.businesses == null) {
+            this.businesses = new LinkedHashSet<>();
         }
     }
 }

@@ -6,6 +6,7 @@ import com.repusense.backend.model.Lead;
 import com.repusense.backend.model.Review;
 import com.repusense.backend.repository.LeadRepository;
 import com.repusense.backend.repository.ReviewRepository;
+import com.repusense.backend.repository.SearchRunRepository;
 import com.repusense.backend.service.GeminiService;
 import com.repusense.backend.service.GeminiService.AnalysisResult;
 
@@ -40,15 +41,18 @@ public class LeadController {
 
     private final LeadRepository leadRepository;
     private final ReviewRepository reviewRepository;
+    private final SearchRunRepository searchRunRepository;
     private final GeminiService geminiService;
 
     public LeadController(
             LeadRepository leadRepository,
             ReviewRepository reviewRepository,
+            SearchRunRepository searchRunRepository,
             GeminiService geminiService) {
 
         this.leadRepository = leadRepository;
         this.reviewRepository = reviewRepository;
+        this.searchRunRepository = searchRunRepository;
         this.geminiService = geminiService;
     }
 
@@ -270,10 +274,38 @@ public class LeadController {
     }
 
     @GetMapping("/export/csv")
-    public ResponseEntity<byte[]> exportLeadsToCsv() {
+    public ResponseEntity<byte[]> exportLeadsToCsv(
+            @RequestParam(required = false) Long searchId) {
 
-        List<Lead> leads = leadRepository.findAll();
+        if (searchId == null) {
+            return createCsvResponse(
+                    leadRepository.findAllWithBusiness(),
+                    "repusense-leads.csv"
+            );
+        }
 
+        if (searchId <= 0) {
+            throw new IllegalArgumentException(
+                    "El ID de búsqueda debe ser un número positivo."
+            );
+        }
+
+        if (!searchRunRepository.existsById(searchId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "No se encontró la búsqueda solicitada."
+            );
+        }
+
+        return createCsvResponse(
+                leadRepository.findAllBySearchRunId(searchId),
+                "repusense-busqueda-" + searchId + ".csv"
+        );
+    }
+
+    private ResponseEntity<byte[]> createCsvResponse(
+            List<Lead> leads,
+            String filename) {
         StringBuilder csv = new StringBuilder();
 
         csv.append('\uFEFF');
@@ -338,7 +370,7 @@ public class LeadController {
 
         headers.set(
                 HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"repusense-leads.csv\""
+                "attachment; filename=\"" + filename + "\""
         );
 
         return ResponseEntity.ok()

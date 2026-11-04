@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,6 +57,10 @@ public class SearchRunController {
         searchRun.setFinishedAt(null);
         searchRun.setFoundCount(0);
         searchRun.setSavedCount(0);
+
+        if (searchRun.getBusinesses() == null) {
+            searchRun.setBusinesses(new LinkedHashSet<>());
+        }
 
         SearchRun savedRun = searchRunRepository.save(searchRun);
 
@@ -126,6 +131,10 @@ public class SearchRunController {
 
                 Business savedBusiness = businessRepository.save(business);
 
+                // Asociar el comercio con esta búsqueda.
+                savedRun.getBusinesses().add(savedBusiness);
+
+                // Crear un Lead solamente si todavía no existe.
                 if (!leadRepository.existsByBusiness_Id(savedBusiness.getId())) {
                     Lead lead = new Lead();
                     lead.setBusiness(savedBusiness);

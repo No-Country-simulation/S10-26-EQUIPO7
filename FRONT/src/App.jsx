@@ -1,5 +1,10 @@
-
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import axios from "axios";
 import "./App.css";
 
@@ -25,15 +30,26 @@ function getLeads(response) {
   return [];
 }
 
+function getHistory(response) {
+  const data = response?.data;
+
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.searches)) return data.searches;
+
+  return null;
+}
+
 function getErrorMessage(err) {
-  const data = err.response?.data;
+  const data = err?.response?.data;
 
   if (typeof data === "string") return data;
 
   return (
     data?.error ||
     data?.message ||
-    err.message ||
+    err?.message ||
     "Ocurrió un error inesperado."
   );
 }
@@ -53,7 +69,7 @@ function leadStatus(status) {
 }
 
 function problemFromAnalysis(analysis = "") {
-  const text = analysis.toLowerCase();
+  const text = String(analysis).toLowerCase();
 
   if (/higiene|limpieza|sanitari|suciedad/.test(text)) return "Higiene";
   if (/demora|espera|tardanza|tiempo de atención/.test(text)) return "Demoras";
@@ -63,8 +79,6 @@ function problemFromAnalysis(analysis = "") {
   return "Sin clasificar";
 }
 
-// El riesgo se obtiene exclusivamente de campos estructurados del backend.
-// No se deduce buscando palabras dentro del informe de Gemini.
 function riskFromLead(lead) {
   const business = businessOf(lead);
 
@@ -208,23 +222,30 @@ function RatingStars({ rating }) {
 export default function App() {
   const [leads, setLeads] = useState([]);
   const [history, setHistory] = useState([]);
+
   const [searchForm, setSearchForm] = useState(emptySearch);
   const [cityFilter, setCityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [query, setQuery] = useState("");
 
   const [loadingLeads, setLoadingLeads] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [searching, setSearching] = useState(false);
   const [analyzingId, setAnalyzingId] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingSearchIds, setExportingSearchIds] = useState(() => new Set());
 
   const [error, setError] = useState("");
+  const [historyError, setHistoryError] = useState("");
   const [notice, setNotice] = useState("");
   const [connection, setConnection] = useState("checking");
 
   const [analysisById, setAnalysisById] = useState({});
   const [selectedLead, setSelectedLead] = useState(null);
   const [activeTab, setActiveTab] = useState("leads");
+
+  // Identifica cada consulta del historial para evitar respuestas fuera de orden.
+  const historyRequestRef = useRef(0);
 
   const loadLeads = useCallback(async () => {
     setLoadingLeads(true);
@@ -256,7 +277,9 @@ export default function App() {
 
       return loadedLeads;
     } catch (err) {
+      console.error("Error al cargar leads:", err);
       setConnection("disconnected");
+
       setError(
         getErrorMessage(err) ||
           "No se pudo consultar el backend. Verificá que Spring Boot esté iniciado en el puerto 8080."
@@ -269,21 +292,68 @@ export default function App() {
   }, []);
 
   const loadHistory = useCallback(async () => {
+    // Cada consulta recibe un número único.
+    const requestId = ++historyRequestRef.current;
+
+    setLoadingHistory(true);
+    setHistoryError("");
+
     try {
+      console.log("Consultando historial:", SEARCH_API);
+
       const response = await axios.get(SEARCH_API, {
         timeout: 20000,
       });
 
-      const loadedHistory = Array.isArray(response.data)
-        ? [...response.data].reverse()
-        : [];
+      console.log("Respuesta del historial:", response.data);
+
+      const data = getHistory(response);
+
+      if (data === null) {
+        throw new Error(
+          "El backend no devolvió una lista de búsquedas. Revisá la respuesta de /api/searches."
+        );
+      }
+
+      const loadedHistory = [...data].sort((a, b) => {
+        const dateA = new Date(a.startedAt || 0).getTime();
+        const dateB = new Date(b.startedAt || 0).getTime();
+
+        return dateB - dateA;
+      });
+
+      // Una respuesta anterior no puede reemplazar una consulta más reciente.
+      if (requestId !== historyRequestRef.current) {
+        return loadedHistory;
+      }
 
       setHistory(loadedHistory);
+      setHistoryError("");
+
+      console.log(
+        `Historial actualizado correctamente: ${loadedHistory.length} búsquedas.`
+      );
 
       return loadedHistory;
-    } catch {
-      setHistory([]);
+    } catch (err) {
+      console.error("ERROR AL CARGAR HISTORIAL:", err);
+
+      // Ignora errores de consultas que ya fueron reemplazadas.
+      if (requestId !== historyRequestRef.current) {
+        return null;
+      }
+
+      // No borramos el historial anterior si falla una actualización.
+      setHistoryError(
+        `No se pudo actualizar el historial: ${getErrorMessage(err)}`
+      );
+
       return null;
+    } finally {
+      // Solo la última consulta puede cambiar el indicador de carga.
+      if (requestId === historyRequestRef.current) {
+        setLoadingHistory(false);
+      }
     }
   }, []);
 
@@ -378,6 +448,7 @@ export default function App() {
 
     setSearching(true);
     setError("");
+    setHistoryError("");
     setNotice("");
 
     try {
@@ -417,7 +488,6 @@ export default function App() {
       const message = getErrorMessage(err);
 
       setError(`No se pudo completar la búsqueda. ${message}`);
-
       await loadHistory();
     } finally {
       setSearching(false);
@@ -481,7 +551,10 @@ export default function App() {
 
       setSelectedLead({
         ...updatedLead,
-        displayName: lead.displayName || businessOf(lead).name || `Comercio #${lead.id}`,
+        displayName:
+          lead.displayName ||
+          businessOf(lead).name ||
+          `Comercio #${lead.id}`,
       });
 
       setNotice(
@@ -493,7 +566,9 @@ export default function App() {
       const message = getErrorMessage(err);
 
       setError(
-        `No se pudo analizar ${lead.displayName || `el comercio #${lead.id}`}. ${message}`
+        `No se pudo analizar ${
+          lead.displayName || `el comercio #${lead.id}`
+        }. ${message}`
       );
     } finally {
       setAnalyzingId(null);
@@ -542,13 +617,19 @@ export default function App() {
     });
   };
 
-  const exportCsv = async () => {
+  const exportCsv = async (searchId = null) => {
     setError("");
     setNotice("");
-    setExporting(true);
+
+    if (searchId !== null) {
+      setExportingSearchIds((currentIds) => new Set(currentIds).add(searchId));
+    } else {
+      setExporting(true);
+    }
 
     try {
       const response = await axios.get(`${API}/leads/export/csv`, {
+        params: searchId !== null ? { searchId } : {},
         responseType: "blob",
         timeout: 30000,
       });
@@ -561,20 +642,46 @@ export default function App() {
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = "repusense-leads.csv";
+      link.download =
+        searchId !== null
+          ? `repusense-busqueda-${searchId}.csv`
+          : "repusense-leads.csv";
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
 
-      setNotice("El archivo CSV se descargó correctamente.");
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+
+      setNotice(
+        searchId !== null
+          ? `Se descargó el CSV de la búsqueda #${searchId}.`
+          : "El archivo CSV general se descargó correctamente."
+      );
     } catch (err) {
       setError(
         `No se pudo exportar el CSV. ${getErrorMessage(err)}`
       );
     } finally {
-      setExporting(false);
+      if (searchId !== null) {
+        setExportingSearchIds((currentIds) => {
+          const nextIds = new Set(currentIds);
+          nextIds.delete(searchId);
+          return nextIds;
+        });
+      } else {
+        setExporting(false);
+      }
     }
+  };
+
+  const refreshAll = async () => {
+    setError("");
+    setNotice("");
+
+    await Promise.all([loadLeads(), loadHistory()]);
   };
 
   return (
@@ -613,15 +720,15 @@ export default function App() {
 
           <button
             className="button button-secondary"
-            onClick={() => {
-              loadLeads();
-              loadHistory();
-            }}
-            disabled={loadingLeads || searching}
+            onClick={refreshAll}
+            disabled={loadingLeads || loadingHistory || searching}
+            type="button"
           >
             <i
               className={`fa-solid ${
-                loadingLeads ? "fa-spinner fa-spin" : "fa-rotate"
+                loadingLeads || loadingHistory
+                  ? "fa-spinner fa-spin"
+                  : "fa-rotate"
               }`}
             />
             Actualizar datos
@@ -769,6 +876,7 @@ export default function App() {
             <button
               className={activeTab === "leads" ? "tab active" : "tab"}
               onClick={() => setActiveTab("leads")}
+              type="button"
             >
               <i className="fa-solid fa-list-check" />
               Comercios y leads
@@ -777,7 +885,11 @@ export default function App() {
 
             <button
               className={activeTab === "history" ? "tab active" : "tab"}
-              onClick={() => setActiveTab("history")}
+              onClick={() => {
+                setActiveTab("history");
+                loadHistory();
+              }}
+              type="button"
             >
               <i className="fa-solid fa-clock-rotate-left" />
               Historial
@@ -825,7 +937,7 @@ export default function App() {
 
                   <button
                     className="button button-secondary"
-                    onClick={exportCsv}
+                    onClick={() => exportCsv()}
                     disabled={exporting}
                     type="button"
                   >
@@ -926,6 +1038,7 @@ export default function App() {
                                 aria-label={`Analizar ${item.displayName}`}
                                 onClick={() => analyzeLead(item)}
                                 disabled={analyzingId === item.id}
+                                type="button"
                               >
                                 <i
                                   className={`fa-solid ${
@@ -942,6 +1055,7 @@ export default function App() {
                                 aria-label={`Ver análisis de ${item.displayName}`}
                                 onClick={() => openAnalysis(item)}
                                 disabled={!item.analysis}
+                                type="button"
                               >
                                 <i className="fa-solid fa-eye" />
                               </button>
@@ -955,6 +1069,7 @@ export default function App() {
                                   String(item.status).toUpperCase() ===
                                   "CONTACTED"
                                 }
+                                type="button"
                               >
                                 <i className="fa-solid fa-user-check" />
                               </button>
@@ -980,13 +1095,38 @@ export default function App() {
                 <button
                   className="button button-secondary"
                   onClick={loadHistory}
+                  disabled={loadingHistory}
+                  type="button"
                 >
-                  <i className="fa-solid fa-rotate" />
-                  Actualizar historial
+                  <i
+                    className={`fa-solid ${
+                      loadingHistory
+                        ? "fa-spinner fa-spin"
+                        : "fa-rotate"
+                    }`}
+                  />
+                  {loadingHistory ? "Actualizando..." : "Actualizar historial"}
                 </button>
               </div>
 
-              {history.length === 0 ? (
+              {loadingHistory && history.length === 0 ? (
+                <div className="empty-state">
+                  <i className="fa-solid fa-spinner fa-spin" />
+                  <p>Consultando el historial en el backend...</p>
+                </div>
+              ) : history.length === 0 && historyError ? (
+                <div className="notice notice-error">
+                  <i className="fa-solid fa-circle-exclamation" />
+                  <span>{historyError}</span>
+                  <button
+                    onClick={loadHistory}
+                    type="button"
+                    className="button button-secondary"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : history.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon">
                     <i className="fa-solid fa-clock-rotate-left" />
@@ -998,41 +1138,93 @@ export default function App() {
                   </p>
                 </div>
               ) : (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Ciudad</th>
-                        <th>Rubro</th>
-                        <th>Estado</th>
-                        <th>Encontrados</th>
-                        <th>Guardados</th>
-                      </tr>
-                    </thead>
+                <>
+                  {historyError && (
+                    <div className="notice notice-error">
+                      <i className="fa-solid fa-circle-exclamation" />
+                      <span>
+                        {historyError} Se muestran los registros cargados
+                        anteriormente.
+                      </span>
+                      <button
+                        onClick={loadHistory}
+                        type="button"
+                        className="button button-secondary"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
 
-                    <tbody>
-                      {history.map((item) => (
-                        <tr key={item.id}>
-                          <td>{formatDate(item.startedAt)}</td>
-                          <td>{item.city || "—"}</td>
-                          <td>{item.category || "—"}</td>
-                          <td>
-                            <span
-                              className={`status status-${String(
-                                item.status || ""
-                              ).toLowerCase()}`}
-                            >
-                              {item.status || "—"}
-                            </span>
-                          </td>
-                          <td>{item.foundCount ?? 0}</td>
-                          <td>{item.savedCount ?? 0}</td>
+                  {loadingHistory && (
+                    <p className="help-text">
+                      <i className="fa-solid fa-spinner fa-spin" />
+                      Actualizando historial...
+                    </p>
+                  )}
+
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Ciudad</th>
+                          <th>Rubro</th>
+                          <th>Estado</th>
+                          <th>Encontrados</th>
+                          <th>Guardados</th>
+                          <th>Exportar</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+
+                      <tbody>
+                        {history.map((item) => (
+                          <tr key={item.id}>
+                            <td>{formatDate(item.startedAt)}</td>
+                            <td>{item.city || "—"}</td>
+                            <td>{item.category || "—"}</td>
+                            <td>
+                              <span
+                                className={`status status-${String(
+                                  item.status || ""
+                                ).toLowerCase()}`}
+                              >
+                                {item.status || "—"}
+                              </span>
+                            </td>
+                            <td>{item.foundCount ?? 0}</td>
+                            <td>{item.savedCount ?? 0}</td>
+                            <td>
+                              <button
+                                className="button button-secondary"
+                                type="button"
+                                onClick={() => exportCsv(item.id)}
+                                disabled={
+                                  String(item.status || "").toUpperCase() !==
+                                    "COMPLETED" ||
+                                  Number(item.savedCount ?? 0) <= 0 ||
+                                  exportingSearchIds.has(item.id)
+                                }
+                                title="Descargar los comercios de esta búsqueda"
+                              >
+                                <i
+                                  className={`fa-solid ${
+                                    exportingSearchIds.has(item.id)
+                                      ? "fa-spinner fa-spin"
+                                      : "fa-file-csv"
+                                  }`}
+                                />
+                                {exportingSearchIds.has(item.id)
+                                  ? "Exportando..."
+                                  : "Descargar CSV"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -1074,6 +1266,7 @@ export default function App() {
                 className="icon-button close-button"
                 onClick={() => setSelectedLead(null)}
                 aria-label="Cerrar"
+                type="button"
               >
                 <i className="fa-solid fa-xmark" />
               </button>
@@ -1112,6 +1305,7 @@ export default function App() {
                   className="button button-primary"
                   onClick={() => analyzeLead(selectedLead)}
                   disabled={analyzingId === selectedLead.id}
+                  type="button"
                 >
                   <i className="fa-solid fa-brain" />
                   Analizar con Gemini
