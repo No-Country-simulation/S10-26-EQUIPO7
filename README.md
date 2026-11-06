@@ -90,8 +90,24 @@ En la misma ventana CMD, ejecutar:
 
 ```cmd
 cd /d E:\S10-26-EQUIPO7\backend
+for /f %A in ('powershell -NoProfile -Command "[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))"') do set "JWT_SECRET=%A"
+set "JWT_EXPIRATION=3600000"
+set "FRONTEND_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173"
 mvn spring-boot:run
 ```
+
+El primer comando genera un secreto JWT aleatorio de 32 bytes. Conservá el
+mismo secreto entre reinicios del backend para que las sesiones sigan siendo
+válidas; no lo guardes en Git. `JWT_EXPIRATION` se expresa en milisegundos
+(3600000 equivale a 60 minutos). `backend/.env.example` documenta estas
+variables, pero Spring Boot no carga automáticamente archivos `.env`.
+El token se almacena en `localStorage` para conservar la sesión entre recargas;
+como cualquier dato accesible desde JavaScript, puede quedar expuesto ante una
+vulnerabilidad XSS.
+
+El primer usuario debe registrarse desde la pantalla de acceso. Luego puede
+iniciar sesión para entrar al Dashboard. Los endpoints de la aplicación
+requieren `Authorization: Bearer <token>`.
 
 Backend disponible en:
 

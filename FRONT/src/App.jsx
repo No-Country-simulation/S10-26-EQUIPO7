@@ -5,15 +5,17 @@ import {
   useRef,
   useState,
 } from "react";
-import axios from "axios";
+import AuthScreen from "./AuthScreen.jsx";
+import {
+  api,
+  clearSession,
+  getStoredSession,
+  SESSION_EXPIRED_EVENT,
+} from "./apiClient.js";
 import "./App.css";
 
-const API_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:8080"
-).replace(/\/$/, "");
-
-const API = `${API_BASE}/api/v1`;
-const SEARCH_API = `${API_BASE}/api/searches`;
+const API = "/api/v1";
+const SEARCH_API = "/api/searches";
 
 const emptySearch = {
   city: "La Plata",
@@ -220,6 +222,74 @@ function RatingStars({ rating }) {
 }
 
 export default function App() {
+  const [session, setSession] = useState(getStoredSession);
+  const [authMode, setAuthMode] = useState("login");
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setSession(null);
+      setAuthMode("login");
+    };
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession);
+    return () =>
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession);
+  }, []);
+
+  const handleLogout = () => {
+    clearSession();
+    setSession(null);
+    setAuthMode("login");
+  };
+
+  useEffect(() => {
+    if (!session) {
+      return undefined;
+    }
+
+    let timer;
+    const expireSession = () => {
+      const remaining = session.expiresAt - Date.now();
+      if (remaining <= 0) {
+        clearSession();
+        setSession(null);
+        setAuthMode("login");
+        return;
+      }
+
+      timer = window.setTimeout(
+        expireSession,
+        Math.min(remaining, 2147483647)
+      );
+    };
+
+    timer = window.setTimeout(
+      expireSession,
+      Math.min(session.expiresAt - Date.now(), 2147483647)
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [session]);
+
+  if (!session) {
+    return (
+      <AuthScreen
+        mode={authMode}
+        onAuthenticated={setSession}
+        onModeChange={setAuthMode}
+      />
+    );
+  }
+
+  return (
+    <Dashboard
+      user={session.user}
+      onLogout={handleLogout}
+    />
+  );
+}
+
+function Dashboard({ user, onLogout }) {
   const [leads, setLeads] = useState([]);
   const [history, setHistory] = useState([]);
 
@@ -251,7 +321,7 @@ export default function App() {
     setLoadingLeads(true);
 
     try {
-      const response = await axios.get(`${API}/leads`, {
+      const response = await api.get(`${API}/leads`, {
         params: { page: 0, size: 100 },
         timeout: 20000,
       });
@@ -301,7 +371,7 @@ export default function App() {
     try {
       console.log("Consultando historial:", SEARCH_API);
 
-      const response = await axios.get(SEARCH_API, {
+      const response = await api.get(SEARCH_API, {
         timeout: 20000,
       });
 
@@ -358,8 +428,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadLeads();
-    loadHistory();
+    const timer = window.setTimeout(() => {
+      loadLeads();
+      loadHistory();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadLeads, loadHistory]);
 
   const businesses = useMemo(
@@ -452,7 +526,7 @@ export default function App() {
     setNotice("");
 
     try {
-      const response = await axios.post(
+      const response = await api.post(
         SEARCH_API,
         {
           city: searchForm.city.trim(),
@@ -500,7 +574,7 @@ export default function App() {
     setNotice("");
 
     try {
-      const response = await axios.post(
+      const response = await api.post(
         `${API}/leads/${lead.id}/analyze`,
         {},
         { timeout: 90000 }
@@ -580,7 +654,7 @@ export default function App() {
     setNotice("");
 
     try {
-      await axios.patch(`${API}/leads/${lead.id}/status`, {
+      await api.patch(`${API}/leads/${lead.id}/status`, {
         status: "CONTACTED",
       });
 
@@ -628,7 +702,7 @@ export default function App() {
     }
 
     try {
-      const response = await axios.get(`${API}/leads/export/csv`, {
+      const response = await api.get(`${API}/leads/export/csv`, {
         params: searchId !== null ? { searchId } : {},
         responseType: "blob",
         timeout: 30000,
@@ -697,13 +771,24 @@ export default function App() {
           </div>
         </div>
 
-        <div className={`connection-pill ${connection}`}>
-          <span className="connection-dot" />
-          {connection === "connected"
-            ? "Backend conectado"
-            : connection === "disconnected"
-              ? "Backend desconectado"
-              : "Comprobando conexión"}
+        <div className="topbar-actions">
+          <div className={`connection-pill ${connection}`}>
+            <span className="connection-dot" />
+            {connection === "connected"
+              ? "Backend conectado"
+              : connection === "disconnected"
+                ? "Backend desconectado"
+                : "Comprobando conexión"}
+          </div>
+          <span className="signed-in-user">{user.name}</span>
+          <button
+            className="button button-secondary logout-button"
+            onClick={onLogout}
+            type="button"
+          >
+            <i className="fa-solid fa-arrow-right-from-bracket" />
+            Cerrar sesión
+          </button>
         </div>
       </header>
 

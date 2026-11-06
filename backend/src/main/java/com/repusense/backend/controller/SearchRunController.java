@@ -20,7 +20,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/searches")
-@CrossOrigin(origins = "*")
 public class SearchRunController {
 
     private final SearchRunRepository searchRunRepository;
