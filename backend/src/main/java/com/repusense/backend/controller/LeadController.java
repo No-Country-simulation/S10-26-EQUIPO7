@@ -280,7 +280,8 @@ public class LeadController {
         if (searchId == null) {
             return createCsvResponse(
                     leadRepository.findAllWithBusiness(),
-                    "repusense-leads.csv"
+                    "repusense-leads.csv",
+                    "\r\n"
             );
         }
 
@@ -290,15 +291,53 @@ public class LeadController {
             );
         }
 
-        if (!searchRunRepository.existsById(searchId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "No se encontró la búsqueda solicitada."
-            );
+        var searchRun = searchRunRepository.findById(searchId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "No se encontró la búsqueda solicitada."
+                ));
+
+        List<Lead> searchLeads =
+                leadRepository.findAllBySearchRunId(searchId);
+
+        if (searchLeads.isEmpty()) {
+            Integer savedCount = searchRun.getSavedCount();
+
+            if (savedCount == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "No se pudo verificar la cantidad de comercios "
+                                + "asociados a esta búsqueda."
+                );
+            }
+
+            if (savedCount == 0) {
+                return createCsvResponse(
+                        searchLeads,
+                        "repusense-busqueda-" + searchId + ".csv"
+                );
+            }
+
+            List<Lead> matchingLeads =
+                    leadRepository.findAllByBusinessCityAndCategory(
+                            searchRun.getCity(),
+                            searchRun.getCategory()
+                    );
+
+            if (!Integer.valueOf(matchingLeads.size())
+                    .equals(savedCount)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "No se pudieron verificar los comercios asociados "
+                                + "a esta búsqueda."
+                );
+            }
+
+            searchLeads = matchingLeads;
         }
 
         return createCsvResponse(
-                leadRepository.findAllBySearchRunId(searchId),
+                searchLeads,
                 "repusense-busqueda-" + searchId + ".csv"
         );
     }
@@ -306,6 +345,13 @@ public class LeadController {
     private ResponseEntity<byte[]> createCsvResponse(
             List<Lead> leads,
             String filename) {
+        return createCsvResponse(leads, filename, "\n");
+    }
+
+    private ResponseEntity<byte[]> createCsvResponse(
+            List<Lead> leads,
+            String filename,
+            String recordSeparator) {
         StringBuilder csv = new StringBuilder();
 
         csv.append('\uFEFF');
@@ -313,8 +359,8 @@ public class LeadController {
         csv.append(
                 "ID Lead,Nombre,Ciudad,Categoria,Direccion,Calificacion,"
                         + "Cantidad Resenas,Telefono,Web,Estado,Email Contacto,"
-                        + "Riesgo,Motivo Riesgo,Problema Principal,Analisis IA\n"
-        );
+                        + "Riesgo,Motivo Riesgo,Problema Principal,Analisis IA"
+        ).append(recordSeparator);
 
         for (Lead lead : leads) {
 
@@ -356,7 +402,7 @@ public class LeadController {
                     .append(csvValue(lead.getRiskReason())).append(',')
                     .append(csvValue(lead.getAiMainProblem())).append(',')
                     .append(csvValue(lead.getAiAnalysis()))
-                    .append('\n');
+                    .append(recordSeparator);
         }
 
         byte[] content = csv.toString()

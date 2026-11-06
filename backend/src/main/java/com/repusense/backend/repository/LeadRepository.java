@@ -31,4 +31,15 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
             )
             """)
     List<Lead> findAllBySearchRunId(@Param("searchRunId") Long searchRunId);
+
+    @Query("""
+            select lead
+            from Lead lead
+            join fetch lead.business business
+            where lower(business.city) = lower(:city)
+              and lower(business.category) = lower(:category)
+            """)
+    List<Lead> findAllByBusinessCityAndCategory(
+            @Param("city") String city,
+            @Param("category") String category);
 }
