@@ -13,9 +13,13 @@ import java.util.Optional;
 public class BusinessService {
 
     private final BusinessRepository businessRepository;
+    private final BusinessDeletionService businessDeletionService;
 
-    public BusinessService(BusinessRepository businessRepository) {
+    public BusinessService(
+            BusinessRepository businessRepository,
+            BusinessDeletionService businessDeletionService) {
         this.businessRepository = businessRepository;
+        this.businessDeletionService = businessDeletionService;
     }
 
     public List<Business> getAllBusinesses() {
@@ -62,14 +66,7 @@ public class BusinessService {
     public void deleteBusiness(Long id) {
         validateId(id);
 
-        if (!businessRepository.existsById(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "No se encontró el comercio solicitado"
-            );
-        }
-
-        businessRepository.deleteById(id);
+        businessDeletionService.deleteBusinesses(List.of(id));
     }
 
     private void validateId(Long id) {

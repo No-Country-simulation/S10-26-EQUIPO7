@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repusense.backend.auth.service.JwtService;
 import com.repusense.backend.model.AppUser;
+import com.repusense.backend.model.UserRole;
 import com.repusense.backend.repository.AppUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,11 +69,13 @@ class AuthFlowIntegrationTest {
                         .content(json(Map.of(
                                 "name", "Test User",
                                 "email", EMAIL,
-                                "password", PASSWORD
+                                "password", PASSWORD,
+                                "role", "ADMIN"
                         ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.user.name").value("Test User"))
                 .andExpect(jsonPath("$.user.email").value(EMAIL))
+                .andExpect(jsonPath("$.user.role").value("USER"))
                 .andExpect(jsonPath("$.user.password").doesNotExist())
                 .andExpect(jsonPath("$.user.passwordHash").doesNotExist())
                 .andReturn()
@@ -85,6 +88,7 @@ class AuthFlowIntegrationTest {
         assertNotEquals(PASSWORD, savedUser.getPasswordHash());
         assertTrue(savedUser.getPasswordHash().startsWith("$2"));
         assertTrue(savedUser.isActive());
+        assertEquals(UserRole.USER, savedUser.getRole());
         assertNotNull(savedUser.getCreatedAt());
     }
 
@@ -143,6 +147,7 @@ class AuthFlowIntegrationTest {
                 .andExpect(jsonPath("$.user.id").isNumber())
                 .andExpect(jsonPath("$.user.name").value("Test User"))
                 .andExpect(jsonPath("$.user.email").value(EMAIL))
+                .andExpect(jsonPath("$.user.role").value("USER"))
                 .andExpect(jsonPath("$.user.password").doesNotExist())
                 .andReturn()
                 .getResponse()

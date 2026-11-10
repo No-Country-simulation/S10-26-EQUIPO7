@@ -4,6 +4,7 @@ package com.repusense.backend.repository;
 import com.repusense.backend.model.Lead;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,10 @@ import java.util.List;
 public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificationExecutor<Lead> {
 
     boolean existsByBusiness_Id(Long businessId);
+
+    @Modifying
+    @Query("delete from Lead lead where lead.business.id in :businessIds")
+    int deleteAllByBusinessIds(@Param("businessIds") List<Long> businessIds);
 
     @Query("select lead from Lead lead join fetch lead.business")
     List<Lead> findAllWithBusiness();

@@ -78,7 +78,10 @@ public class AuthService {
         return new UserResponse(
                 appUser.getId(),
                 appUser.getName(),
-                appUser.getEmail()
+                appUser.getEmail(),
+                appUser.getRole() == null
+                        ? com.repusense.backend.model.UserRole.USER
+                        : appUser.getRole()
         );
     }
 

@@ -1,4 +1,4 @@
-import {
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import AuthScreen from "./AuthScreen.jsx";
+import AdminBusinesses from "./AdminBusinesses.jsx";
 import {
   api,
   clearSession,
@@ -222,7 +223,7 @@ function RatingStars({ rating }) {
 }
 
 export default function App() {
-  const [session, setSession] = useState(getStoredSession);
+  const [session, setSession] = React.useState(getStoredSession);
   const [authMode, setAuthMode] = useState("login");
 
   useEffect(() => {
@@ -289,7 +290,7 @@ export default function App() {
   );
 }
 
-function Dashboard({ user, onLogout }) {
+export function Dashboard({ user, onLogout }) {
   const [leads, setLeads] = useState([]);
   const [history, setHistory] = useState([]);
 
@@ -980,9 +981,22 @@ function Dashboard({ user, onLogout }) {
               Historial
               <span>{history.length}</span>
             </button>
+
+            {user.role === "ADMIN" && (
+              <button
+                className={activeTab === "admin" ? "tab active" : "tab"}
+                onClick={() => setActiveTab("admin")}
+                type="button"
+              >
+                <i className="fa-solid fa-store-gear" />
+                ADMINISTRACIÓN
+              </button>
+            )}
           </div>
 
-          {activeTab === "leads" ? (
+          {activeTab === "admin" && user.role === "ADMIN" ? (
+            <AdminBusinesses onDataChanged={loadLeads} />
+          ) : activeTab === "leads" ? (
             <>
               <div className="table-toolbar">
                 <div>

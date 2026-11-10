@@ -1,49 +1,155 @@
 # 🗄️ RepuSense - Módulo de Base de Datos
 
-Este módulo contiene la definición del esquema relacional y las instrucciones de configuración para la base de datos PostgreSQL de **RepuSense**.
+Este módulo contiene la documentación de configuración, conexión y administración de la base de datos PostgreSQL utilizada por **RepuSense – Radar de Reputación en Crisis**.
 
----
+## 📊 Arquitectura de la base de datos
 
-## 📊 Arquitectura del Esquema
+RepuSense utiliza PostgreSQL para almacenar la información generada y administrada por el sistema.
 
-El sistema consta de **3 tablas principales**:
+Entre los principales datos gestionados se encuentran:
 
-1. **`business`**: Guarda los datos comerciales e institucionales de los locales rastreados.
-   - Garantiza la unicidad mediante la clave única `(source, source_business_id)`.
-2. **`lead`**: Almacena los prospectos del pipeline de ventas, vinculados a cada negocio, junto con los diagnósticos y sugerencias generados por la Inteligencia Artificial (Google Gemini).
-3. **`search_run`**: Mantiene el historial, métricas y trazabilidad de las ejecuciones de scraping/búsqueda realizadas por el usuario o script de Python.
+- **Business:** información de los comercios encontrados mediante las búsquedas.
+- **Lead:** prospectos comerciales, estados de seguimiento y resultados del análisis de reputación.
+- **SearchRun:** historial y métricas de las búsquedas realizadas.
+- **Reviews:** reseñas utilizadas para evaluar la reputación de los comercios.
+- **Usuarios y roles:** información relacionada con la autenticación y los permisos de acceso.
 
----
+La estructura definitiva depende de las entidades implementadas en el backend.
 
-## 🛠️ Configuración y Conexión
+## 🛠️ Configuración y conexión
 
 ### Requisitos previos
-- **PostgreSQL**: v15 o superior.
-- **Base de Datos**: `repusense_db`
 
-### Creación / Inicialización
+- PostgreSQL 15 o superior.
+- Base de datos: `repusense_db`.
+- Backend desarrollado con Spring Boot y Spring Data JPA.
+- Java 21.
 
-1. Accede a PostgreSQL desde tu consola (`cmd`):
-   ```bash
-   "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres
-   Crea la base de datos si aún no existe:
+### Creación de la base de datos
 
-SQL
+Desde Windows CMD, ingresar a PostgreSQL:
+
+```bash
+"C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres
+```
+
+Crear la base de datos:
+
+```sql
 CREATE DATABASE repusense_db;
+```
+
+Conectarse a la base:
+
+```sql
 \c repusense_db
-Ejecuta el script del esquema:
+```
 
-Bash
-psql -U postgres -d repusense_db -f schema.sql
-🔍 Comandos útiles en psql
-Listar tablas: \dt
+### Inicialización del esquema
 
-Ver estructura de una tabla: \d business
+El backend utiliza Spring Data JPA e Hibernate para gestionar las entidades y sincronizar la estructura de las tablas con PostgreSQL.
 
-Consultar negocios: SELECT * FROM business;
+La configuración utilizada es:
 
-Consultar leads: SELECT * FROM lead;
+```properties
+spring.jpa.hibernate.ddl-auto=update
+```
 
-Consultar historial de búsquedas: SELECT * FROM search_run;
+Por lo tanto, las tablas se actualizan al iniciar el backend, según las entidades existentes en el proyecto.
 
-Salir: \q
+No es necesario ejecutar un archivo `schema.sql` si no está incluido en el repositorio.
+
+## 🔍 Comandos útiles en PostgreSQL
+
+Conectarse a la base de datos:
+
+```sql
+\c repusense_db
+```
+
+Listar las tablas:
+
+```sql
+\dt
+```
+
+Consultar la estructura de una tabla:
+
+```sql
+\d business
+```
+
+Consultar negocios:
+
+```sql
+SELECT * FROM business;
+```
+
+Consultar leads:
+
+```sql
+SELECT * FROM lead;
+```
+
+Consultar historial de búsquedas:
+
+```sql
+SELECT * FROM search_run;
+```
+
+Consultar cantidad de negocios:
+
+```sql
+SELECT COUNT(*) FROM business;
+```
+
+Consultar cantidad de leads:
+
+```sql
+SELECT COUNT(*) FROM lead;
+```
+
+Consultar estados de los leads:
+
+```sql
+SELECT status, COUNT(*)
+FROM lead
+GROUP BY status;
+```
+
+Salir de PostgreSQL:
+
+```sql
+\q
+```
+
+## 🔐 Configuración de conexión
+
+La conexión se configura desde el backend mediante `application.properties` y las variables de entorno correspondientes.
+
+Datos de referencia:
+
+| Parámetro | Valor |
+|---|---|
+| Motor | PostgreSQL |
+| Base de datos | repusense_db |
+| Puerto | 5432 |
+| Usuario | postgres (configurable) |
+
+Las credenciales reales deben configurarse localmente. No deben publicarse contraseñas ni claves privadas en GitHub.
+
+## 🔗 Integración con el backend
+
+El backend Spring Boot utiliza PostgreSQL para:
+
+- Persistir los comercios encontrados.
+- Registrar y administrar leads.
+- Guardar el historial de búsquedas.
+- Almacenar información de reseñas y análisis.
+- Gestionar usuarios y permisos de acceso.
+
+## 👥 Proyecto
+
+**RepuSense – Radar de Reputación en Crisis**
+
+Proyecto desarrollado en el marco de la simulación laboral de No Country, equipo S10-26-EQUIPO7.
