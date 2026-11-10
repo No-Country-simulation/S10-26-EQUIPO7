@@ -1,71 +1,88 @@
-import os
-import json
+
+
+"""
+REPUSENSE - GENERATE LEADS
+
+Módulo antiguo de generación de leads mediante Gemini y CSV.
+
+La arquitectura actual centraliza el análisis de reputación
+en Spring Boot, utilizando OpenAI y las reseñas asociadas
+a cada negocio en PostgreSQL.
+
+Este archivo queda desactivado para evitar:
+- Uso de Gemini.
+- Lectura de reseñas ficticias desde CSV.
+- Asociación incorrecta de reseñas por nombre.
+- Generación de correos electrónicos inventados.
+- Inserciones de leads mediante endpoints no confirmados.
+
+No modifica ni elimina registros de PostgreSQL.
+"""
+
 import requests
-from dotenv import load_dotenv
-from config import BACKEND_URL
 
-load_dotenv()
+from config import BACKEND_URL, REQUEST_TIMEOUT
 
-def get_unprocessed_businesses():
-    """Obtiene la lista de negocios registrados en la BD."""
-    url = f"{BACKEND_URL}/businesses"
+
+def analyze_existing_lead(lead_id):
+    """
+    Solicita al backend el análisis de un lead existente.
+
+    El backend utiliza OpenAI y los datos disponibles
+    en PostgreSQL para realizar el diagnóstico.
+    """
+
+    if not lead_id:
+        print("Error: se necesita un ID de lead.")
+        return None
+
+    url = f"{BACKEND_URL}/leads/{lead_id}/analyze"
+
     try:
-        response = requests.get(url)
-        if response.status_code == 200:
+        response = requests.post(
+            url,
+            timeout=REQUEST_TIMEOUT
+        )
+
+        if response.status_code in (200, 201):
+            print(f"Análisis completado para el lead {lead_id}.")
             return response.json()
-    except Exception as e:
-        print(f"❌ Error al consultar comercios: {e}")
-    return []
 
-def generate_lead_local_ai(business):
-    """Genera el diagnóstico comercial ajustado al negocio."""
-    name = business.get('name', 'Comercio')
-    category = business.get('category', 'Local Comercial')
-    city = business.get('city', 'La Plata')
-    rating = business.get('rating', 3.0)
+        print(
+            f"Error al analizar el lead {lead_id}: "
+            f"HTTP {response.status_code}"
+        )
+        print(response.text)
 
-    # Diagnóstico automático basado en categoría y calificación
-    return {
-        "main_problem": f"Baja calificación promedio ({rating} estrellas) en Google Maps dificulta la captación de nuevos clientes en {city}.",
-        "email_subject": f"Propuesta para impulsar la reputación online de {name}",
-        "email_opening": f"Hola equipo de {name}, notamos que actualmente tienen una puntuación de {rating} en Google Maps. Diseñamos una estrategia automatizada para optimizar sus reseñas, responder a las críticas de forma profesional y atraer más clientes locales en {city}."
-    }
+    except requests.RequestException as error:
+        print(f"Error de conexión con el backend: {error}")
 
-def save_lead_to_backend(business_id, ai_data):
-    """Guarda el Lead generado en el Backend."""
-    url = f"{BACKEND_URL}/leads"
-    payload = {
-        "business": {"id": business_id},
-        "status": "NEW",
-        "aiMainProblem": ai_data.get("main_problem"),
-        "aiEmailSubject": ai_data.get("email_subject"),
-        "aiEmailOpening": ai_data.get("email_opening")
-    }
-    
-    try:
-        res = requests.post(url, json=payload)
-        if res.status_code in [200, 201]:
-            print(f"🎯 Lead creado exitosamente en la base de datos para ID negocio: {business_id}")
-            return res.json()
-        else:
-            print(f"⚠️ Error al guardar lead en backend: {res.status_code} - {res.text}")
-    except Exception as e:
-        print(f"❌ Error al enviar lead al backend: {e}")
     return None
 
-def process_leads():
-    businesses = get_unprocessed_businesses()
-    print(f"🔍 Encontrados {len(businesses)} negocios en la base de datos.")
 
-    for b in businesses:
-        b_id = b.get("id")
-        name = b.get("name")
-        print(f"\n⚡ Generando diagnóstico comercial para: {name} (ID: {b_id})...")
-        
-        ai_data = generate_lead_local_ai(b)
-        print(f"💡 Problema detectado: {ai_data.get('main_problem')}")
-        print(f"📧 Asunto: {ai_data.get('email_subject')}")
-        save_lead_to_backend(b_id, ai_data)
+def run_lead_seeder():
+    """
+    Desactiva el antiguo proceso de generación masiva.
+
+    Los leads existentes se analizan desde el backend.
+    """
+
+    print("=" * 60)
+    print("REPUSENSE - GENERACIÓN DE LEADS")
+    print("=" * 60)
+
+    print("\nEl generador antiguo quedó desactivado.")
+    print("No se utilizará Gemini ni el CSV de reseñas de muestra.")
+    print("No se crearán correos electrónicos ficticios.")
+    print("No se insertarán leads duplicados.")
+
+    print(
+        "\nPara analizar un lead existente, "
+        "utilizá el endpoint de análisis de Spring Boot."
+    )
+
+    print("\nNo se modificó PostgreSQL.")
+
 
 if __name__ == "__main__":
-    process_leads()
+    run_lead_seeder()

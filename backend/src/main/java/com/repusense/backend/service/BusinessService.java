@@ -2,8 +2,9 @@ package com.repusense.backend.service;
 
 import com.repusense.backend.model.Business;
 import com.repusense.backend.repository.BusinessRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,26 +12,42 @@ import java.util.Optional;
 @Service
 public class BusinessService {
 
-    @Autowired
-    private BusinessRepository businessRepository;
+    private final BusinessRepository businessRepository;
+
+    public BusinessService(BusinessRepository businessRepository) {
+        this.businessRepository = businessRepository;
+    }
 
     public List<Business> getAllBusinesses() {
         return businessRepository.findAll();
     }
 
     public Optional<Business> getBusinessById(Long id) {
+        validateId(id);
         return businessRepository.findById(id);
     }
 
-    // Este es el método que está buscando el BusinessController
     public Business saveBusiness(Business business) {
+        if (business == null) {
+            throw new IllegalArgumentException("Los datos del comercio son obligatorios");
+        }
+
         return businessRepository.save(business);
     }
 
     public Business updateBusiness(Long id, Business businessDetails) {
+        validateId(id);
+
+        if (businessDetails == null) {
+            throw new IllegalArgumentException("Los datos para actualizar el comercio son obligatorios");
+        }
+
         Business business = businessRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Business not found with id: " + id));
-        
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "No se encontró el comercio solicitado"
+                ));
+
         business.setName(businessDetails.getName());
         business.setCity(businessDetails.getCity());
         business.setCategory(businessDetails.getCategory());
@@ -43,6 +60,21 @@ public class BusinessService {
     }
 
     public void deleteBusiness(Long id) {
+        validateId(id);
+
+        if (!businessRepository.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "No se encontró el comercio solicitado"
+            );
+        }
+
         businessRepository.deleteById(id);
+    }
+
+    private void validateId(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("El ID del comercio debe ser válido");
+        }
     }
 }

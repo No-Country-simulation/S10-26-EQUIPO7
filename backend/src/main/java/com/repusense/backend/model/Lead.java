@@ -1,7 +1,12 @@
+
 package com.repusense.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
+
 import java.time.OffsetDateTime;
 
 @Entity
@@ -16,10 +21,13 @@ public class Lead {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "El comercio asociado es obligatorio")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Business business;
 
+    @NotBlank(message = "El estado del lead es obligatorio")
     @Column(nullable = false, length = 50)
     @Builder.Default
     private String status = "NEW";
@@ -36,32 +44,35 @@ public class Lead {
     @Column(name = "ai_email_opening", columnDefinition = "TEXT")
     private String aiEmailOpening;
 
+    @Column(name = "ai_analysis", columnDefinition = "TEXT")
+    private String aiAnalysis;
+
+    @Column(name = "risk_score")
+    private Integer riskScore;
+
+    @Column(name = "risk_reason", columnDefinition = "TEXT")
+    private String riskReason;
+
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    // Métodos explícitos para asegurar compatibilidad total sin depender de Lombok
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getStatus() {
-        return this.status;
-    }
-
     @PrePersist
     public void prePersist() {
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-        if (this.status == null) {
-            this.status = "NEW";
+        OffsetDateTime now = OffsetDateTime.now();
+
+        createdAt = now;
+        updatedAt = now;
+
+        if (status == null) {
+            status = "NEW";
         }
     }
 
     @PreUpdate
     public void preUpdate() {
-        this.updatedAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 }

@@ -36,3 +36,11 @@ __pycache__/
 *.pyc
 .vscode/
 .idea/
+
+
+
+/docs
+/DB
+/database
+/documentacion
+

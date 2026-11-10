@@ -1,75 +1,64 @@
-import requests
-import json
-from config import BACKEND_URL, MAX_RATING_THRESHOLD
 
-def send_business_to_backend(business_data):
-    """Envia un comercio extraido al backend de Spring Boot."""
-    url = f"{BACKEND_URL}/businesses"
-    headers = {"Content-Type": "application/json"}
-    
-    try:
-        response = requests.post(url, json=business_data, headers=headers)
-        if response.status_code in [200, 201]:
-            print(f"✅ Guardado con éxito: {business_data['name']} (Rating: {business_data['rating']})")
-            return response.json()
-        else:
-            print(f"⚠️ Error al guardar {business_data['name']}: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"❌ No se pudo conectar con el backend: {e}")
-    return None
+"""
+REPUSENSE - PROCESS EXTRACTED PLACES
+
+Módulo antiguo de procesamiento y persistencia de comercios.
+
+La búsqueda actual se realiza desde Spring Boot mediante SerpApi.
+Spring Boot también se encarga de guardar los comercios en PostgreSQL.
+
+Este módulo queda desactivado para evitar:
+- Inserciones duplicadas.
+- Uso de endpoints no confirmados.
+- Datos de comercios simulados.
+- Valores ficticios para teléfonos y sitios web.
+
+No realiza solicitudes HTTP ni modifica PostgreSQL.
+"""
+
 
 def process_extracted_places(places):
-    """Filtra comercios con bajo puntaje y los persiste."""
-    print(f"\n🔍 Procesando {len(places)} comercios encontrados...")
-    
-    saved_count = 0
-    for place in places:
-        rating = place.get("rating", 5.0)
-        
-        # Filtro clave: Solo procesar negocios con baja reputacion
-        if rating <= MAX_RATING_THRESHOLD:
-            payload = {
-                "source": "google_maps",
-                "sourceBusinessId": place.get("place_id"),
-                "name": place.get("name"),
-                "city": place.get("city", "La Plata"),
-                "category": place.get("category", "Restaurante"),
-                "rating": rating,
-                "reviewCount": place.get("user_ratings_total", 0),
-                "phone": place.get("phone", "N/A"),
-                "website": place.get("website", "N/A")
-            }
-            result = send_business_to_backend(payload)
-            if result:
-                saved_count += 1
-        else:
-            print(f"⏭️ Omitido: {place['name']} (Rating alto: {rating})")
+    """
+    Función conservada por compatibilidad con módulos antiguos.
 
-    print(f"\n✨ Resumen: {saved_count} comercios guardados en la base de datos.")
+    No procesa ni guarda comercios.
+    La búsqueda y persistencia corresponden al backend.
+    """
+
+    total = len(places) if places else 0
+
+    print("=" * 60)
+    print("REPUSENSE - PROCESAMIENTO DE COMERCIOS")
+    print("=" * 60)
+
+    print(f"\nComercios recibidos: {total}")
+
+    print(
+        "\nEste procesamiento de Python está desactivado."
+        "\nLa búsqueda y persistencia se realizan desde Spring Boot."
+    )
+
+    print("\nNo se enviaron solicitudes POST.")
+    print("No se modificó PostgreSQL.")
+
+    return 0
+
+
+def send_business_to_backend(business_data):
+    """
+    Función antigua conservada por compatibilidad.
+
+    No envía comercios al backend.
+    """
+
+    print(
+        "Operación desactivada: "
+        "la persistencia de comercios corresponde a Spring Boot."
+    )
+
+    return None
+
 
 if __name__ == "__main__":
-    # Ejemplo de datos extraidos (Simulacion de respuesta de Google Maps)
-    sample_places = [
-        {
-            "place_id": "ChIJ_12345",
-            "name": "Pizzería Central",
-            "city": "La Plata",
-            "category": "Pizzería",
-            "rating": 3.2,
-            "user_ratings_total": 45,
-            "phone": "+542211234567",
-            "website": "http://pizzeriacentral.com"
-        },
-        {
-            "place_id": "ChIJ_67890",
-            "name": "Café Gourmet",
-            "city": "La Plata",
-            "category": "Cafetería",
-            "rating": 4.8,
-            "user_ratings_total": 120,
-            "phone": "+542219876543",
-            "website": "http://cafegourmet.com"
-        }
-    ]
-
-    process_extracted_places(sample_places)
+    print("Este módulo no ejecuta búsquedas ni inserciones.")
+    print("Utilizá el buscador de RepuSense para obtener comercios reales.")
