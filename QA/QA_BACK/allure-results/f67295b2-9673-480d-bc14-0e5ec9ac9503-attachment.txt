@@ -1,0 +1,9 @@
+
+➡️ [REQUEST] GET http://localhost:8080/api/v1/leads?page=-1&size=10
+⬅️ [RESPONSE] Status: 400 (0.005s)
+📄 [BODY]: {
+  "timestamp": "2026-11-10T22:39:18.1985752",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "El número de página no puede ser negativo."
+}

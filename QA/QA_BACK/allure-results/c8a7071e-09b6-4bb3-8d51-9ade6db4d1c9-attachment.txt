@@ -1,0 +1,56 @@
+
+➡️ [REQUEST] POST http://localhost:8080/api/v1/businesses
+📦 [PAYLOAD]: {
+  "source": "QA_AUTOMATION",
+  "sourceBusinessId": "QA_ID_9999",
+  "name": "Cafetería Test JWT",
+  "city": "Cordoba",
+  "category": "Cafetería",
+  "rating": 3.1,
+  "reviewCount": 18
+}
+⬅️ [RESPONSE] Status: 201 (0.009s)
+📄 [BODY]: {
+  "id": 54,
+  "source": "QA_AUTOMATION",
+  "sourceBusinessId": "QA_ID_9999",
+  "name": "Cafetería Test JWT",
+  "city": "Cordoba",
+  "category": "Cafetería",
+  "rating": 3.1,
+  "reviewCount": 18,
+  "phone": null,
+  "website": null,
+  "address": null,
+  "updatedAt": "2026-11-10T22:39:18.0304983-03:00"
+}
+
+➡️ [REQUEST] GET http://localhost:8080/api/v1/businesses/54
+⬅️ [RESPONSE] Status: 200 (0.005s)
+📄 [BODY]: {
+  "id": 54,
+  "source": "QA_AUTOMATION",
+  "sourceBusinessId": "QA_ID_9999",
+  "name": "Cafetería Test JWT",
+  "city": "Cordoba",
+  "category": "Cafetería",
+  "rating": 3.1,
+  "reviewCount": 18,
+  "phone": null,
+  "website": null,
+  "address": null,
+  "updatedAt": "2026-11-11T01:39:18.030498Z"
+}
+
+➡️ [REQUEST] DELETE http://localhost:8080/api/v1/businesses/54
+⬅️ [RESPONSE] Status: 204 (0.006s)
+📄 [BODY]: 
+
+➡️ [REQUEST] GET http://localhost:8080/api/v1/businesses/54
+⬅️ [RESPONSE] Status: 404 (0.004s)
+📄 [BODY]: {
+  "timestamp": "2026-11-10T22:39:18.0552128",
+  "status": 404,
+  "error": "Not Found",
+  "message": "No se encontró el comercio con ID: 54"
+}

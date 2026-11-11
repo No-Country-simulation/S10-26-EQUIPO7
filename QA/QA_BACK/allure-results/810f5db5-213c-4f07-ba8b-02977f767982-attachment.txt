@@ -1,0 +1,314 @@
+
+➡️ [REQUEST] GET http://localhost:8080/api/v1/leads
+⬅️ [RESPONSE] Status: 200 (0.009s)
+📄 [BODY]: {
+  "content": [
+    {
+      "id": 6,
+      "business": {
+        "id": 6,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_106",
+        "name": "Veterinaria Huellitas Felices",
+        "city": "Rosario, Argentina",
+        "category": "Salud / Veterinaria",
+        "rating": 1.6,
+        "reviewCount": 25,
+        "phone": "+54 11 2233-4455",
+        "website": "https://huellitas-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.533844Z"
+      },
+      "status": "NEW",
+      "contactEmail": "contacto@huellitas-ejemplo.com",
+      "aiMainProblem": "Grave riesgo sanitario y falta de higiene en las instalaciones.",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Veterinaria Huellitas Felices",
+      "aiEmailOpening": "Hola equipo de Veterinaria Huellitas Felices, detectamos que actualmente cuentan con una calificación de 1.6★ en Google Maps en Rosario, Argentina. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-10-21T03:00:20.39106Z",
+      "updatedAt": "2026-10-21T03:00:20.39106Z"
+    },
+    {
+      "id": 7,
+      "business": {
+        "id": 7,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_107",
+        "name": "Hamburguesería Burger Kingler",
+        "city": "Medellín, Colombia",
+        "category": "Gastronomía / Cafetería",
+        "rating": 1.7,
+        "reviewCount": 25,
+        "phone": "+57 4 3344-5566",
+        "website": "https://burger-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.538358Z"
+      },
+      "status": "NEW",
+      "contactEmail": "contacto@burger-ejemplo.com",
+      "aiMainProblem": "Excesivos tiempos de espera y cuellos de botella en la atención.",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Hamburguesería Burger Kingler",
+      "aiEmailOpening": "Hola equipo de Hamburguesería Burger Kingler, detectamos que actualmente cuentan con una calificación de 1.7★ en Google Maps en Medellín, Colombia. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-10-21T03:00:22.812329Z",
+      "updatedAt": "2026-10-21T03:00:22.812329Z"
+    },
+    {
+      "id": 1,
+      "business": {
+        "id": 1,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_101",
+        "name": "Clínica Dental Sonrisas",
+        "city": "Buenos Aires, Argentina",
+        "category": "Salud / Clínica Dental",
+        "rating": 1.4,
+        "reviewCount": 25,
+        "phone": "+54 11 4567-8901",
+        "website": "https://sonrisas-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.483698Z"
+      },
+      "status": "CONTACTED",
+      "contactEmail": "contacto@sonrisas-ejemplo.com",
+      "aiMainProblem": "Grave riesgo sanitario y falta de higiene en las instalaciones.",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Clínica Dental Sonrisas",
+      "aiEmailOpening": "Hola equipo de Clínica Dental Sonrisas, detectamos que actualmente cuentan con una calificación de 1.4★ en Google Maps en Buenos Aires, Argentina. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-10-21T03:00:09.53147Z",
+      "updatedAt": "2026-10-21T03:04:25.516839Z"
+    },
+    {
+      "id": 2,
+      "business": {
+        "id": 2,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_102",
+        "name": "Restaurante Don Mario",
+        "city": "Ciudad de México, México",
+        "category": "Gastronomía / Cafetería",
+        "rating": 1.4,
+        "reviewCount": 25,
+        "phone": "+52 55 1234-5678",
+        "website": "https://donmario-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.511815Z"
+      },
+      "status": "CONTACTED",
+      "contactEmail": "contacto@donmario-ejemplo.com",
+      "aiMainProblem": "Excesivos tiempos de espera y cuellos de botella en la atención.",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Restaurante Don Mario",
+      "aiEmailOpening": "Hola equipo de Restaurante Don Mario, detectamos que actualmente cuentan con una calificación de 1.4★ en Google Maps en Ciudad de México, México. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-10-21T03:00:12.017624Z",
+      "updatedAt": "2026-10-21T03:05:09.908205Z"
+    },
+    {
+      "id": 4,
+      "business": {
+        "id": 4,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_104",
+        "name": "Estética Glamour & Spa",
+        "city": "Córdoba, Argentina",
+        "category": "Salud / Estética",
+        "rating": 1.6,
+        "reviewCount": 25,
+        "phone": "+54 9 351 9876-5432",
+        "website": "https://glamour-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.52233Z"
+      },
+      "status": "CONTACTED",
+      "contactEmail": "contacto@glamour-ejemplo.com",
+      "aiMainProblem": "Disconformidad con tarifas elevadas y falta de transparencia en presupuestos.",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Estética Glamour & Spa",
+      "aiEmailOpening": "Hola equipo de Estética Glamour & Spa, detectamos que actualmente cuentan con una calificación de 1.6★ en Google Maps en Córdoba, Argentina. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-10-21T03:00:16.189636Z",
+      "updatedAt": "2026-10-26T21:53:47.760313Z"
+    },
+    {
+      "id": 3,
+      "business": {
+        "id": 3,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_103",
+        "name": "Taller Mecánico El Pistón",
+        "city": "Bogotá, Colombia",
+        "category": "Servicios / Mecánica",
+        "rating": 1.8,
+        "reviewCount": 25,
+        "phone": "+57 1 890-1234",
+        "website": "https://mecanica-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.517326Z"
+      },
+      "status": "CONTACTED",
+      "contactEmail": "contacto@mecanica-ejemplo.com",
+      "aiMainProblem": "Disconformidad con tarifas elevadas y falta de transparencia en presupuestos.",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Taller Mecánico El Pistón",
+      "aiEmailOpening": "Hola equipo de Taller Mecánico El Pistón, detectamos que actualmente cuentan con una calificación de 1.8★ en Google Maps en Bogotá, Colombia. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-10-21T03:00:14.465494Z",
+      "updatedAt": "2026-10-26T21:53:47.760313Z"
+    },
+    {
+      "id": 8,
+      "business": {
+        "id": 8,
+        "source": "GOOGLE_LOCAL",
+        "sourceBusinessId": "5363320036488705185",
+        "name": "KFC Florida",
+        "city": "Buenos Aires",
+        "category": "Comida rápida",
+        "rating": 3.3,
+        "reviewCount": 135,
+        "phone": "N/A",
+        "website": "http://www.kfc.com.ar/",
+        "address": null,
+        "updatedAt": "2026-11-07T14:34:07.055786Z"
+      },
+      "status": "NEW",
+      "contactEmail": "contacto@8-repusense.com",
+      "aiMainProblem": "Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",
+      "aiEmailSubject": "Estrategia de fidelización y agilidad de servicio para KFC Florida",
+      "aiEmailOpening": "Estimados de KFC Florida, su calificación promedio de 3.3 estrellas se ve impactada principalmente por quejas sobre tardanzas en los pedidos. RepuSense les permite canalizar las quejas a tiempo y mejorar su radar local.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-11-07T14:34:07.087439Z",
+      "updatedAt": "2026-11-07T14:34:07.087439Z"
+    },
+    {
+      "id": 9,
+      "business": {
+        "id": 9,
+        "source": "GOOGLE_LOCAL",
+        "sourceBusinessId": "1164393060525654649",
+        "name": "Bar Ugarit",
+        "city": "Buenos Aires",
+        "category": "Bar",
+        "rating": 3.3,
+        "reviewCount": 27,
+        "phone": "N/A",
+        "website": "N/A",
+        "address": null,
+        "updatedAt": "2026-11-07T14:34:30.269723Z"
+      },
+      "status": "NEW",
+      "contactEmail": "contacto@9-repusense.com",
+      "aiMainProblem": "Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",
+      "aiEmailSubject": "Estrategia de fidelización y agilidad de servicio para Bar Ugarit",
+      "aiEmailOpening": "Estimados de Bar Ugarit, su calificación promedio de 3.3 estrellas se ve impactada principalmente por quejas sobre tardanzas en los pedidos. RepuSense les permite canalizar las quejas a tiempo y mejorar su radar local.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-11-07T14:34:30.275239Z",
+      "updatedAt": "2026-11-07T14:34:30.275239Z"
+    },
+    {
+      "id": 10,
+      "business": {
+        "id": 10,
+        "source": "GOOGLE_LOCAL",
+        "sourceBusinessId": "7363754635354755850",
+        "name": "Panadería La nueva Orquidea",
+        "city": "Buenos Aires",
+        "category": "Panadería",
+        "rating": 3.3,
+        "reviewCount": 62,
+        "phone": "011 4374-6348",
+        "website": "N/A",
+        "address": null,
+        "updatedAt": "2026-11-07T14:34:37.51434Z"
+      },
+      "status": "NEW",
+      "contactEmail": "contacto@10-repusense.com",
+      "aiMainProblem": "Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",
+      "aiEmailSubject": "Estrategia de fidelización y agilidad de servicio para Panadería La nueva Orquidea",
+      "aiEmailOpening": "Estimados de Panadería La nueva Orquidea, su calificación promedio de 3.3 estrellas se ve impactada principalmente por quejas sobre tardanzas en los pedidos. RepuSense les permite canalizar las quejas a tiempo y mejorar su radar local.",
+      "aiAnalysis": null,
+      "riskScore": null,
+      "riskReason": null,
+      "createdAt": "2026-11-07T14:34:37.520414Z",
+      "updatedAt": "2026-11-07T14:34:37.520414Z"
+    },
+    {
+      "id": 5,
+      "business": {
+        "id": 5,
+        "source": "GOOGLE_MAPS",
+        "sourceBusinessId": "MOCK_PLACE_105",
+        "name": "Pizzería Nápoles Centro",
+        "city": "Santiago, Chile",
+        "category": "Comercio Minorista / Retail",
+        "rating": 1.3,
+        "reviewCount": 25,
+        "phone": "+56 9 5555-1234",
+        "website": "https://napoles-ejemplo.com",
+        "address": null,
+        "updatedAt": "2026-10-21T01:02:29.527844Z"
+      },
+      "status": "CONTACTED",
+      "contactEmail": "contacto@napoles-ejemplo.com",
+      "aiMainProblem": "Sin evidencia suficiente",
+      "aiEmailSubject": "Propuesta estratégica para revertir reseñas negativas en Pizzería Nápoles Centro",
+      "aiEmailOpening": "Hola equipo de Pizzería Nápoles Centro, detectamos que actualmente cuentan con una calificación de 1.3★ en Google Maps en Santiago, Chile. Desarrollamos un plan de remediación reputacional diseñado para resolver estas quejas, mejorar el posicionamiento y atraer nuevos clientes.",
+      "aiAnalysis": "1. DIAGNÓSTICO GENERAL\nPizzería Nápoles Centro en Santiago presenta una reputación alarmante. Con una calificación de 1.3 basada en 25 reseñas, enfrenta una crisis sever\na de imagen que amenaza su viabilidad comercial. Esta es una evaluación preliminar basada únicamente en la métrica del perfil.\n\n2. SENTIMIENTO GENERAL\nNegativo. La puntuación promedio de 1.3 sobre 5 estrellas refleja un descontento masivo e generalizado de los clientes en el punto de venta digital.\n\n3. FORTALEZAS\nNo es posible identificar fortalezas respaldadas por datos debido a la crítica calificación general y la ausencia de comentarios positivos registrados en los metadatos disponibles.\n\n4. PROBLEMAS RECURRENTES\nNo hay textos de reseñas guardados. Por lo tanto, no se pueden tipificar problemas específicos ni atribuir fallas concretas sin evidencia textual que los respalde.\n\n5. Oportunidades de MEJORA\nAuditar inmediatamente los procesos operativos en cocina y atención. Implementar un protocolo de servicio al cliente. Monitorear activamente las plataformas de reseñas para captar feedback detallado.\n\n6. RECOMENDACIONES\nPrioridad uno: Investigar las causas internas del bajo puntaje. Prioridad dos: Contactar a clientes insatisfechos en la plataforma. Prioridad tres: Lanzar una campaña de recuperación de confianza y calidad.\n\n7. RESPUESTAS A CLIENTES\nNo hay material suficiente para responder comentarios concretos al carecer de textos de reseñas críticas.\n\n8. PRIORIDAD COMERCIAL\nAlta. La puntuación de 1.3 exige una intervención comercial urgente para detener la pérdida de clientes y revertir la imagen negativa en Santiago.\n\n9. CLASIFICACIÓN DE RIESGO\n4 = Alto: problemas importantes respaldados por evidencia cuantitativa crítica (calificación de 1.3 en 25 reseñas).",
+      "riskScore": 4,
+      "riskReason": "Calificación extremadamente baja (1.3) con un volumen significativo de reseñas (25), indicando un fallo sistémico.",
+      "createdAt": "2026-10-21T03:00:18.678701Z",
+      "updatedAt": "2026-11-10T15:30:55.08876Z"
+    }
+  ],
+  "pageable": {
+    "pageNumber": 0,
+    "pageSize": 10,
+    "sort": {
+      "empty": true,
+      "sorted": false,
+      "unsorted": true
+    },
+    "offset": 0,
+    "paged": true,
+    "unpaged": false
+  },
+  "last": false,
+  "totalPages": 6,
+  "totalElements": 54,
+  "first": true,
+  "numberOfElements": 10,
+  "size": 10,
+  "number": 0,
+  "sort": {
+    "empty": true,
+    "sorted": false,
+    "unsorted": true
+  },
+  "empty": false
+}
+
+➡️ [REQUEST] PATCH http://localhost:8080/api/v1/leads/6/status
+📦 [PAYLOAD]: {
+  "status": "   "
+}
+⬅️ [RESPONSE] Status: 400 (0.004s)
+📄 [BODY]: {
+  "timestamp": "2026-11-10T22:39:18.1875661",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Debés proporcionar un estado válido para el lead."
+}

@@ -1,0 +1,9 @@
+
+➡️ [REQUEST] GET http://localhost:8080/api/v1/businesses/999999
+⬅️ [RESPONSE] Status: 404 (0.004s)
+📄 [BODY]: {
+  "timestamp": "2026-11-10T22:39:18.065488",
+  "status": 404,
+  "error": "Not Found",
+  "message": "No se encontró el comercio con ID: 999999"
+}

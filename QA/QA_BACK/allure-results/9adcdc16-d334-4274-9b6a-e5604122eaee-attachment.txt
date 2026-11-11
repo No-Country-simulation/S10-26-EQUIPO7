@@ -1,0 +1,12 @@
+
+➡️ [REQUEST] PATCH http://localhost:8080/api/v1/leads/999999/status
+📦 [PAYLOAD]: {
+  "status": "CONTACTED"
+}
+⬅️ [RESPONSE] Status: 404 (0.005s)
+📄 [BODY]: {
+  "timestamp": "2026-11-10T22:39:18.1658217",
+  "status": 404,
+  "error": "Not Found",
+  "message": "No se encontró el lead con ID: 999999"
+}

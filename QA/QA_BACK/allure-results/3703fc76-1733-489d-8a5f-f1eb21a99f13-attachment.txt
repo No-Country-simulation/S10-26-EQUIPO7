@@ -1,0 +1,81 @@
+﻿ID Lead,Nombre,Ciudad,Categoria,Direccion,Calificacion,Cantidad Resenas,Telefono,Web,Estado,Email Contacto,Riesgo,Motivo Riesgo,Problema Principal,Analisis IA
+6,"Veterinaria Huellitas Felices","Rosario, Argentina","Salud / Veterinaria","","1.6","25","+54 11 2233-4455","https://huellitas-ejemplo.com","NEW","contacto@huellitas-ejemplo.com","","","Grave riesgo sanitario y falta de higiene en las instalaciones.",""
+7,"Hamburguesería Burger Kingler","Medellín, Colombia","Gastronomía / Cafetería","","1.7","25","+57 4 3344-5566","https://burger-ejemplo.com","NEW","contacto@burger-ejemplo.com","","","Excesivos tiempos de espera y cuellos de botella en la atención.",""
+1,"Clínica Dental Sonrisas","Buenos Aires, Argentina","Salud / Clínica Dental","","1.4","25","+54 11 4567-8901","https://sonrisas-ejemplo.com","CONTACTED","contacto@sonrisas-ejemplo.com","","","Grave riesgo sanitario y falta de higiene en las instalaciones.",""
+2,"Restaurante Don Mario","Ciudad de México, México","Gastronomía / Cafetería","","1.4","25","+52 55 1234-5678","https://donmario-ejemplo.com","CONTACTED","contacto@donmario-ejemplo.com","","","Excesivos tiempos de espera y cuellos de botella en la atención.",""
+4,"Estética Glamour & Spa","Córdoba, Argentina","Salud / Estética","","1.6","25","+54 9 351 9876-5432","https://glamour-ejemplo.com","CONTACTED","contacto@glamour-ejemplo.com","","","Disconformidad con tarifas elevadas y falta de transparencia en presupuestos.",""
+3,"Taller Mecánico El Pistón","Bogotá, Colombia","Servicios / Mecánica","","1.8","25","+57 1 890-1234","https://mecanica-ejemplo.com","CONTACTED","contacto@mecanica-ejemplo.com","","","Disconformidad con tarifas elevadas y falta de transparencia en presupuestos.",""
+8,"KFC Florida","Buenos Aires","Comida rápida","","3.3","135","N/A","http://www.kfc.com.ar/","NEW","contacto@8-repusense.com","","","Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",""
+9,"Bar Ugarit","Buenos Aires","Bar","","3.3","27","N/A","N/A","NEW","contacto@9-repusense.com","","","Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",""
+10,"Panadería La nueva Orquidea","Buenos Aires","Panadería","","3.3","62","011 4374-6348","N/A","NEW","contacto@10-repusense.com","","","Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",""
+5,"Pizzería Nápoles Centro","Santiago, Chile","Comercio Minorista / Retail","","1.3","25","+56 9 5555-1234","https://napoles-ejemplo.com","CONTACTED","contacto@napoles-ejemplo.com","4","Calificación extremadamente baja (1.3) con un volumen significativo de reseñas (25), indicando un fallo sistémico.","Sin evidencia suficiente","1. DIAGNÓSTICO GENERAL
+Pizzería Nápoles Centro en Santiago presenta una reputación alarmante. Con una calificación de 1.3 basada en 25 reseñas, enfrenta una crisis sever
+a de imagen que amenaza su viabilidad comercial. Esta es una evaluación preliminar basada únicamente en la métrica del perfil.
+
+2. SENTIMIENTO GENERAL
+Negativo. La puntuación promedio de 1.3 sobre 5 estrellas refleja un descontento masivo e generalizado de los clientes en el punto de venta digital.
+
+3. FORTALEZAS
+No es posible identificar fortalezas respaldadas por datos debido a la crítica calificación general y la ausencia de comentarios positivos registrados en los metadatos disponibles.
+
+4. PROBLEMAS RECURRENTES
+No hay textos de reseñas guardados. Por lo tanto, no se pueden tipificar problemas específicos ni atribuir fallas concretas sin evidencia textual que los respalde.
+
+5. Oportunidades de MEJORA
+Auditar inmediatamente los procesos operativos en cocina y atención. Implementar un protocolo de servicio al cliente. Monitorear activamente las plataformas de reseñas para captar feedback detallado.
+
+6. RECOMENDACIONES
+Prioridad uno: Investigar las causas internas del bajo puntaje. Prioridad dos: Contactar a clientes insatisfechos en la plataforma. Prioridad tres: Lanzar una campaña de recuperación de confianza y calidad.
+
+7. RESPUESTAS A CLIENTES
+No hay material suficiente para responder comentarios concretos al carecer de textos de reseñas críticas.
+
+8. PRIORIDAD COMERCIAL
+Alta. La puntuación de 1.3 exige una intervención comercial urgente para detener la pérdida de clientes y revertir la imagen negativa en Santiago.
+
+9. CLASIFICACIÓN DE RIESGO
+4 = Alto: problemas importantes respaldados por evidencia cuantitativa crítica (calificación de 1.3 en 25 reseñas)."
+54,"Clínica Dental Sonrisas","Buenos Aires, Argentina","Salud / Clínica Dental","","1.4","25","+54 11 4567-8901","https://sonrisas-ejemplo.com","CONTACTED","contacto@test-qa.com.ar","","","Problema crítico de demoras en pedidos",""
+11,"Panadería sandwicheria","Buenos Aires","Panadería","","3.3","27","N/A","N/A","NEW","contacto@11-repusense.com","","","Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Buenos Aires.",""
+12,"Pizza Pizuela","Cordoba","Pizzería","","3.3","241","0351 423-7994","N/A","NEW","contacto@12-repusense.com","","","Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Cordoba.",""
+13,"Pizza Alla Pala - Patio Olmos","Cordoba","Pizzería","","2.9","39","0351 875-8398","https://pizzaallapala.com.ar/","NEW","contacto@13-repusense.com","","","Problemas críticos de higiene y estado sanitario reportados en 39 reseñas de Google Maps en Cordoba.",""
+14,"Black Bar","Cordoba","Bar","","1.7","73","N/A","N/A","NEW","contacto@14-repusense.com","","","Problemas críticos de higiene y estado sanitario reportados en 73 reseñas de Google Maps en Cordoba.",""
+15,"La Nueva Italia Panadería","Cordoba","Panadería","","2.3","68","N/A","https://www.instagram.com/panaderialanuevaitalia/","NEW","contacto@15-repusense.com","","","Problemas críticos de higiene y estado sanitario reportados en 68 reseñas de Google Maps en Cordoba.",""
+16,"LO+RICO – Panaderías","Cordoba","Panadería","","3.1","70","N/A","N/A","NEW","contacto@16-repusense.com","","","Quejas recurrentes sobre la atención al cliente y mal trato del personal deterioran la reputación de LO+RICO – Panaderías en Cordoba.",""
+17,"Pizzapana","Rosario","Pizzería","","3.2","39","N/A","N/A","NEW","contacto@17-repusense.com","","","Quejas recurrentes sobre la atención al cliente y mal trato del personal deterioran la reputación de Pizzapana en Rosario.",""
+18,"Pizza Puck","Rosario","Pizzería","","3.4","254","0341 457-5770","http://pizzapuck.com/","NEW","contacto@18-repusense.com","","","Demoras excesivas en los tiempos de espera y entrega generan insatisfacción persistente en sus comensales de Rosario.",""
+19,"El Molino - Panadería 24hs","Rosario","Panadería","","3.1","63","0341 753-2700","N/A","NEW","contacto@19-repusense.com","","","Quejas recurrentes sobre la atención al cliente y mal trato del personal deterioran la reputación de El Molino - Panadería 24hs en Rosario.",""
+20,"Farmacia Ojeda La Plata","La Plata","farmacia","CCU, Diag. 80 1053, B1900 La Plata, Provincia de Buenos Aires","4.2","240","0221 421-7018","http://farmaciaojeda.com.ar/","NEW","","","","",""
+21,"Manes","La Plata","farmacia","C. 49 636, B1900APZ La Plata, Provincia de Buenos Aires","4.3","292","0221 425-0100","http://www.manes.com.ar/","NEW","","","","",""
+22,"Farmacia Bruno","La Plata","farmacia","C. 55 499, B1900CFK La Plata, Provincia de Buenos Aires","4.4","267","0221 421-0984","http://www.farmaciabrunolaplata.com/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=10067496743436077528","NEW","","","","",""
+23,"Farmacia La Doce","La Plata","farmacia","TKW, C. 12 1307, B1900 La Plata, Provincia de Buenos Aires","3.8","246","0221 489-0991","http://farmacialadoce.com.ar/","NEW","","","","",""
+24,"Farmacia Zorich","La Plata","farmacia","C. 54 1052, B1900 La Plata, Provincia de Buenos Aires","3.9","534","0221 421-4133","http://www.farmaciazorich.com.ar/","NEW","","","","",""
+25,"Farmacia 10 y 72","La Plata","farmacia","Av. 72 N° 751 esquina 10, B1904BMC La Plata, Provincia de Buenos Aires","4.2","89","0221 202-4990","https://wa.me/5492212024990","NEW","","","","",""
+26,"Farmacia de Turno La Plata","La Plata","farmacia","Calle 6, C. 57 &, B1904 La Plata, Provincia de Buenos Aires","3.0","106","","http://xn--farmaciabaias-skb.es/","NEW","","","","",""
+27,"Farmacia Ferrando","La Plata","farmacia","C. 34 598 Esq 7, B1900 La Plata, Provincia de Buenos Aires","3.3","223","0221 425-7449","https://www.instagram.com/grupo.sarti/?hl=es","NEW","","","","",""
+28,"FARMACIA CARUSO","La Plata","farmacia","Av. 44 549, B1900 La Plata, Provincia de Buenos Aires","3.9","485","0221 439-2600","http://www.farmaciacaruso.com.ar/","NEW","","","","",""
+29,"Farmacia Puricelli","La Plata","farmacia","Av. 7 1851, B1900 La Plata, Provincia de Buenos Aires","4.1","157","0221 421-9190","https://www.facebook.com/Farmaciapuricelli/","NEW","","","","",""
+30,"Farmacia Marsico","La Plata","farmacia","Av. 7 445, B1900 La Plata, Provincia de Buenos Aires","3.7","178","0221 422-9760","","NEW","","","","",""
+31,"Farmacia la Protectora de Arantzazu","La Plata","farmacia","C. 49 742, B1900AQD La Plata, Provincia de Buenos Aires","2.7","47","0221 421-8127","","NEW","","","","",""
+32,"Farmacia Sarti","La Plata","farmacia","Av. 38 751, B1900 La Plata, Provincia de Buenos Aires","3.7","419","0221 423-3003","https://tiendagruposarti.com.ar/","NEW","","","","",""
+33,"Farmacia + Perfumería ''Glowko''","La Plata","farmacia","C. 58 1765, B1900 La Plata, Provincia de Buenos Aires","3.9","67","0221 457-0024","","NEW","","","","",""
+34,"FARMACIA INGLESA","La Plata","farmacia","C. 47 N 634, B1900 La Plata, Provincia de Buenos Aires","3.3","94","0221 421-3400","http://www.farmaciainglesalp.com.ar/","NEW","","","","",""
+35,"Farmacia Lenoier","La Plata","farmacia","Av. 7 1441, B1904 La Plata, Provincia de Buenos Aires","4.3","127","0221 421-0344","http://www.farmacialenoier.com.ar/","NEW","","","","",""
+36,"Farmacia Central 24","palerrmo","farmacia","Av R S Ortiz 2199, C1425 Cdad. Autónoma de Buenos Aires","4.0","140","011 4832-5059","https://www.farmaciacentral24.com/Contacto","NEW","","","","",""
+37,"Farmacity","palerrmo","farmacia","Av. Raúl Scalabrini Ortiz 1868, C1414DOS Cdad. Autónoma de Buenos Aires","3.9","550","011 4511-5131","https://www.farmacity.com/","NEW","","","","",""
+38,"Farmacity","palerrmo","farmacia","Raúl Scalabrini Ortiz 3149, C1425 DBM, Cdad. Autónoma de Buenos Aires","3.9","289","011 4159-8297","","NEW","","","","",""
+39,"Farmacity","palerrmo","farmacia","Paraguay 4911, C1426BTA Cdad. Autónoma de Buenos Aires","3.2","328","","http://farmacity.com/","NEW","","","","",""
+40,"Farmacia 5100","palerrmo","farmacia","Ángel Justiniano Carranza 2388, C1425 FXF, Cdad. Autónoma de Buenos Aires","4.1","111","011 4771-0450","http://farmacia5100.com/","NEW","","","","",""
+41,"Openfarma Plaza Italia","palerrmo","farmacia","Av. Sta. Fe 4228, C1425BGJ Cdad. Autónoma de Buenos Aires","4.1","656","011 5353-0030","https://www.openfarma.com.ar/","NEW","","","","",""
+42,"Farmacia Charite","palerrmo","farmacia","Paraguay 5002, C1425 BTD, Cdad. Autónoma de Buenos Aires","3.5","92","011 4777-4699","http://www.farmaciacharite.com.ar/","NEW","","","","",""
+43,"Farmacity","palerrmo","farmacia","Av. Sta. Fe 4180, C1425 Cdad. Autónoma de Buenos Aires","3.2","274","011 4770-9002","http://www.farmacity.com.ar/","NEW","","","","",""
+44,"Farmacity","palerrmo","farmacia","Av. Córdoba 4601, C1414BAE Cdad. Autónoma de Buenos Aires","3.8","697","011 4770-9506","http://www.farmacity.com.ar/","NEW","","","","",""
+45,"Farmacity","palerrmo","farmacia","República Dominicana 3358, C1425GKB Cdad. Autónoma de Buenos Aires","3.6","290","011 4827-2247","http://www.farmacity.com.ar/","NEW","","","","",""
+46,"Farmacity","palerrmo","farmacia","Av. Sta. Fe 3380, C1425 Cdad. Autónoma de Buenos Aires","3.5","491","011 5778-7777","https://www.farmacity.com/","NEW","","","","",""
+47,"Santo Remedio","palerrmo","farmacia","Güemes 4799, C1425BLK Cdad. Autónoma de Buenos Aires","4.4","53","011 4776-1140","","NEW","","","","",""
+48,"Farmacity","palerrmo","farmacia","Av. Sta. Fe 5381, C1425BIC Cdad. Autónoma de Buenos Aires","3.5","171","","","NEW","","","","",""
+49,"Farmacia Rp/Botanico","palerrmo","farmacia","Av. Sta. Fe 3709, C1425 Cdad. Autónoma de Buenos Aires","3.5","93","011 4831-2321","http://www.farmaciasrp.com.ar/","NEW","","","","",""
+50,"Farmacia Varela","palerrmo","farmacia","APO, Cabello 3701, C1425 Cdad. Autónoma de Buenos Aires","4.4","358","011 4803-2807","http://www.farmaciavarela.com.ar/","NEW","","","","",""
+51,"Farmacity","palerrmo","farmacia","Olleros 1802, C1426 CRH, Cdad. Autónoma de Buenos Aires","3.8","273","011 4771-9710","https://www.farmacity.com/","NEW","","","","",""
+52,"Clínica Dental Sonrisas","Buenos Aires, Argentina","Salud / Clínica Dental","","1.4","25","+54 11 4567-8901","https://sonrisas-ejemplo.com","CONTACTED","contacto@test-qa.com.ar","","","Problema crítico de demoras en pedidos",""
+53,"Clínica Dental Sonrisas","Buenos Aires, Argentina","Salud / Clínica Dental","","1.4","25","+54 11 4567-8901","https://sonrisas-ejemplo.com","CONTACTED","contacto@test-qa.com.ar","","","Problema crítico de demoras en pedidos",""

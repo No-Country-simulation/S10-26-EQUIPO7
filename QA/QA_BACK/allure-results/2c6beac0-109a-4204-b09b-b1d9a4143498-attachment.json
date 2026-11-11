@@ -1,0 +1,10 @@
+{
+  "business": {
+    "id": 1
+  },
+  "status": "NEW",
+  "contactEmail": "contacto@test-qa.com.ar",
+  "aiMainProblem": "Problema crítico de demoras en pedidos",
+  "aiEmailSubject": "Propuesta RepuSense QA",
+  "aiEmailOpening": "Estimado titular, detectamos oportunidades..."
+}

@@ -1,0 +1,9 @@
+
+➡️ [REQUEST] GET http://localhost:8080/api/v1/leads?page=0&size=0
+⬅️ [RESPONSE] Status: 400 (0.005s)
+📄 [BODY]: {
+  "timestamp": "2026-11-10T22:39:18.2079106",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "El tamaño de página debe estar entre 1 y 100."
+}
