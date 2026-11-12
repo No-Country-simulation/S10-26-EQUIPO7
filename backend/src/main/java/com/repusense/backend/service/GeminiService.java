@@ -49,10 +49,10 @@ public class GeminiService {
                     "(?im)^\\s{0,3}#{0,3}\\s*(\\d+)\\.\\s+(.+?)\\s*$"
             );
 
-    @Value("${gemini.api.key}")
+    @Value("${GEMINI_API_KEY:}")
     private String apiKey;
 
-    @Value("${gemini.api.url}")
+    @Value("${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent}")
     private String apiUrl;
 
     private final RestTemplate restTemplate;
