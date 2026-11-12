@@ -5,8 +5,9 @@ export const USER_STORAGE_KEY = "repusense.user";
 export const SESSION_EXPIRED_EVENT = "repusense:session-expired";
 
 export const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:8080")
-    .replace(/\/$/, ""),
+  baseURL: import.meta.env.PROD
+  ? "https://repusense-backend-7snj.onrender.com"
+  : "http://localhost:8080",
 });
 
 export function saveSession(token, user) {
