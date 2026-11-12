@@ -8,6 +8,7 @@ import com.repusense.backend.repository.BusinessRepository;
 import com.repusense.backend.repository.LeadRepository;
 import com.repusense.backend.repository.SearchRunRepository;
 import com.repusense.backend.service.GoogleMapsService;
+import com.repusense.backend.service.SearchRunService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,16 +27,19 @@ public class SearchRunController {
     private final BusinessRepository businessRepository;
     private final LeadRepository leadRepository;
     private final GoogleMapsService googleMapsService;
+    private final SearchRunService searchRunService;
 
     public SearchRunController(
             SearchRunRepository searchRunRepository,
             BusinessRepository businessRepository,
             LeadRepository leadRepository,
-            GoogleMapsService googleMapsService) {
+            GoogleMapsService googleMapsService,
+            SearchRunService searchRunService) {
         this.searchRunRepository = searchRunRepository;
         this.businessRepository = businessRepository;
         this.leadRepository = leadRepository;
         this.googleMapsService = googleMapsService;
+        this.searchRunService = searchRunService;
     }
 
     @PostMapping
@@ -167,6 +171,19 @@ public class SearchRunController {
     @GetMapping
     public ResponseEntity<List<SearchRun>> getAllSearches() {
         return ResponseEntity.ok(searchRunRepository.findAll());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSearch(@PathVariable Long id) {
+        validateId(id);
+        searchRunService.deleteSearchRun(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> clearSearchHistory() {
+        searchRunService.clearSearchHistory();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

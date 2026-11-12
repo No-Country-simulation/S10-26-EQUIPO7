@@ -71,11 +71,17 @@ describe("business administration", () => {
   it("shows the administration navigation only to ADMIN users", async () => {
     const adminView = renderDashboard("ADMIN");
     expect(await screen.findByRole("button", { name: /ADMINISTRACIÓN/i })).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /FINALIZAR PRESENTACIÓN/i })
+    ).toHaveAttribute("href", "/gracias");
     adminView.unmount();
 
     renderDashboard("USER");
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: /ADMINISTRACIÓN/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /FINALIZAR PRESENTACIÓN/i })
+      ).not.toBeInTheDocument();
     });
   });
 

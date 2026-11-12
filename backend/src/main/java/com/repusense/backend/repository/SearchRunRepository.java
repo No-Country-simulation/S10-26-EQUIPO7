@@ -23,4 +23,15 @@ public interface SearchRunRepository extends JpaRepository<SearchRun, Long> {
             nativeQuery = true
     )
     int unlinkBusinesses(@Param("businessIds") List<Long> businessIds);
+
+    @Modifying
+    @Query(
+            value = "delete from search_run_business where search_run_id = :searchRunId",
+            nativeQuery = true
+    )
+    int unlinkBusinessesFromSearchRun(@Param("searchRunId") Long searchRunId);
+
+    @Modifying
+    @Query(value = "delete from search_run_business", nativeQuery = true)
+    int unlinkAllBusinessesFromSearchRuns();
 }

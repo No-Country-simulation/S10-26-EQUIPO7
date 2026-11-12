@@ -13,6 +13,7 @@ import {
   getStoredSession,
   SESSION_EXPIRED_EVENT,
 } from "./apiClient.js";
+import { ThankYouScreen, WelcomeScreen } from "./PresentationScreens.jsx";
 import "./App.css";
 
 const API = "/api/v1";
@@ -223,6 +224,20 @@ function RatingStars({ rating }) {
 }
 
 export default function App() {
+  const pathname = window.location.pathname;
+
+  if (pathname === "/gracias") {
+    return <ThankYouScreen />;
+  }
+
+  if (pathname === "/" && !getStoredSession()) {
+    return <WelcomeScreen />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
   const [session, setSession] = React.useState(getStoredSession);
   const [authMode, setAuthMode] = useState("login");
 
@@ -303,6 +318,8 @@ export function Dashboard({ user, onLogout }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [searching, setSearching] = useState(false);
   const [analyzingId, setAnalyzingId] = useState(null);
+  const [deletingSearchId, setDeletingSearchId] = useState(null);
+  const [clearingHistory, setClearingHistory] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingSearchIds, setExportingSearchIds] = useState(() => new Set());
 
@@ -427,6 +444,60 @@ export function Dashboard({ user, onLogout }) {
       }
     }
   }, []);
+
+  const deleteSearch = async (searchRun) => {
+    const confirmed = window.confirm(
+      `¿Eliminar la búsqueda de ${searchRun.city || "esta ciudad"} / ${
+        searchRun.category || "este rubro"
+      }? Los negocios y oportunidades comerciales se conservarán.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingSearchId(searchRun.id);
+    setError("");
+    setNotice("");
+
+    try {
+      await api.delete(`${SEARCH_API}/${searchRun.id}`);
+      historyRequestRef.current += 1;
+      setLoadingHistory(false);
+      setHistory((currentHistory) =>
+        currentHistory.filter((item) => item.id !== searchRun.id)
+      );
+      setHistoryError("");
+      setNotice("La búsqueda fue eliminada. Los negocios y oportunidades se conservaron.");
+    } catch (err) {
+      setError(`No se pudo eliminar la búsqueda. ${getErrorMessage(err)}`);
+    } finally {
+      setDeletingSearchId(null);
+    }
+  };
+
+  const clearSearchHistory = async () => {
+    const confirmed = window.confirm(
+      "Se eliminarán todos los registros del historial. Los negocios, oportunidades, reseñas, análisis y estados de seguimiento se conservarán. ¿Deseás continuar?"
+    );
+
+    if (!confirmed) return;
+
+    setClearingHistory(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await api.delete(SEARCH_API);
+      historyRequestRef.current += 1;
+      setLoadingHistory(false);
+      setHistory([]);
+      setHistoryError("");
+      setNotice("Se limpió el historial. Los datos comerciales se conservaron.");
+    } catch (err) {
+      setError(`No se pudo limpiar el historial. ${getErrorMessage(err)}`);
+    } finally {
+      setClearingHistory(false);
+    }
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -782,6 +853,15 @@ export function Dashboard({ user, onLogout }) {
                 : "Comprobando conexión"}
           </div>
           <span className="signed-in-user">{user.name}</span>
+          {user.role === "ADMIN" && (
+            <a
+              className="button button-secondary presentation-finish-button"
+              href="/gracias"
+            >
+              <i className="fa-solid fa-flag-checkered" aria-hidden="true" />
+              Finalizar presentación
+            </a>
+          )}
           <button
             className="button button-secondary logout-button"
             onClick={onLogout}
@@ -1191,21 +1271,44 @@ export function Dashboard({ user, onLogout }) {
                   </p>
                 </div>
 
-                <button
-                  className="button button-secondary"
-                  onClick={loadHistory}
-                  disabled={loadingHistory}
-                  type="button"
-                >
-                  <i
-                    className={`fa-solid ${
-                      loadingHistory
-                        ? "fa-spinner fa-spin"
-                        : "fa-rotate"
-                    }`}
-                  />
-                  {loadingHistory ? "Actualizando..." : "Actualizar historial"}
-                </button>
+                <div className="history-toolbar-actions">
+                  {user.role === "ADMIN" && (
+                    <button
+                      className="button button-danger"
+                      onClick={clearSearchHistory}
+                      disabled={
+                        history.length === 0 ||
+                        clearingHistory ||
+                        deletingSearchId !== null
+                      }
+                      type="button"
+                    >
+                      <i
+                        className={`fa-solid ${
+                          clearingHistory
+                            ? "fa-spinner fa-spin"
+                            : "fa-trash-can"
+                        }`}
+                      />
+                      {clearingHistory ? "Limpiando..." : "Limpiar historial"}
+                    </button>
+                  )}
+                  <button
+                    className="button button-secondary"
+                    onClick={loadHistory}
+                    disabled={loadingHistory || clearingHistory}
+                    type="button"
+                  >
+                    <i
+                      className={`fa-solid ${
+                        loadingHistory
+                          ? "fa-spinner fa-spin"
+                          : "fa-rotate"
+                      }`}
+                    />
+                    {loadingHistory ? "Actualizando..." : "Actualizar historial"}
+                  </button>
+                </div>
               </div>
 
               {loadingHistory && history.length === 0 ? (
@@ -1273,6 +1376,7 @@ export function Dashboard({ user, onLogout }) {
                           <th>Encontrados</th>
                           <th>Guardados</th>
                           <th>Exportar</th>
+                          {user.role === "ADMIN" && <th>Acciones</th>}
                         </tr>
                       </thead>
 
@@ -1318,6 +1422,29 @@ export function Dashboard({ user, onLogout }) {
                                   : "Descargar CSV"}
                               </button>
                             </td>
+                            {user.role === "ADMIN" && (
+                              <td>
+                                  <button
+                                    className="icon-button history-delete-button"
+                                    title="Eliminar búsqueda del historial"
+                                    aria-label={`Eliminar búsqueda #${item.id}`}
+                                    onClick={() => deleteSearch(item)}
+                                    disabled={
+                                      clearingHistory ||
+                                      deletingSearchId !== null
+                                    }
+                                    type="button"
+                                  >
+                                    <i
+                                      className={`fa-solid ${
+                                        deletingSearchId === item.id
+                                          ? "fa-spinner fa-spin"
+                                          : "fa-trash-can"
+                                      }`}
+                                    />
+                                  </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
