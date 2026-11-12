@@ -161,19 +161,7 @@ def step_login(context, email, password):
 
 ---
 
-## Grabación de video
 
-Cada escenario genera un archivo en `videos/nombre_del_escenario.mp4`.
-
-- Si el test **pasa**: el video queda guardado pero no aparece en el reporte
-- Si el test **falla**: el video **y** un screenshot se adjuntan automáticamente en Allure
-
-Para ver los videos manualmente:
-```powershell
-explorer QA\QA_FRONT\videos
-```
-
----
 
 ## Ejecutar solo algunos escenarios
 
@@ -190,15 +178,7 @@ behave --tags=@smoke
 
 ---
 
-## Troubleshooting
 
-| Problema | Solución |
-|---|---|
-| `SessionNotCreatedException` | Chrome desactualizado. Ejecutá `pip install --upgrade selenium webdriver-manager` |
-| `TimeoutException` en "tabla cargue datos" | El backend no responde. Verificá que el backend esté corriendo en el puerto 8080 |
-| Reporte Allure no abre | Verificá que `allure` esté en el PATH. Reinstalá con `npm install -g allure-commandline` |
-| Steps "undefined" en behave | Revisá que el nombre del step en el `.feature` sea idéntico (mayúsculas, tildes) al decorador en `dashboard_steps.py` |
-| Login requerido antes del dashboard | El front redirige al login si no hay sesión. Los steps actuales asumen que ya hay datos cargados. Considerá agregar un step de login en `environment.py → before_all` |
 
 > [!WARNING]
-> El front requiere estar **logueado** para ver el dashboard. Si los tests abren `localhost:5173` y aparece el formulario de login en vez de la tabla, necesitás agregar el paso de autenticación en `environment.py`. Pedile al desarrollador las credenciales de prueba o usá las mismas que QA_BACK: `qa.tester@repusense.com` / `Password123!`
+>allure serve allure-results
