@@ -1,3 +1,4 @@
+
 package com.repusense.backend.auth.service;
 
 import com.repusense.backend.model.AppUser;
@@ -19,13 +20,15 @@ public class JwtService {
     private final long expirationMs;
 
     public JwtService(
-            @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expiration-ms}") long expirationMs) {
+            @Value("${JWT_SECRET:}") String secret,
+            @Value("${JWT_EXPIRATION:3600000}") long expirationMs) {
+
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException(
                     "JWT_SECRET debe tener al menos 32 bytes aleatorios."
             );
         }
+
         if (expirationMs <= 0) {
             throw new IllegalStateException(
                     "JWT_EXPIRATION debe ser un número positivo de milisegundos."
@@ -35,6 +38,7 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(
                 secret.getBytes(StandardCharsets.UTF_8)
         );
+
         this.expirationMs = expirationMs;
     }
 
